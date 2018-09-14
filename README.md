@@ -1,7 +1,8 @@
 # Frequency Agnostic Representation
->This is the code we used in our NIPS 2018 paper 'Frequency-Agnostic Word Representation' ('Improving Word Embedding by Adversarial Training')
+This is the code we used in our NIPS 2018 paper >'Frequency-Agnostic Word Representation' ('Improving Word Embedding by Adversarial Training')
 
 >Chengyue Gong, Di He, Xu Tan, Tao Qin, Liwei Wang, Tie-yan Liu
+
 
 ## Acknowledgements
 
