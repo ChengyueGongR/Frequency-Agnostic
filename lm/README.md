@@ -2,6 +2,8 @@
 
 A large portion of this repo is borrowed from the following repos: https://github.com/salesforce/awd-lstm-lm
 
+## Experiments
+
 ### WikiText-2 (WT2) with LSTM
 
 + `python main.py --epochs 750 --data data/wikitext-2 --dropouth 0.2 --seed 1882 --save ./trained_model/wiki2.pt --log-file ./log/wiki2_$IDX.log --alpha 0 --beta 1 --bptt 70`
