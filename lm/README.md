@@ -18,5 +18,5 @@ A large portion of this repo is borrowed from the following repos: https://githu
 
 ## Further Work
 
-Except adversarial regularization, we also test other regularizers which can match two distributions, e.g. MMD, empirical first n moment, neural mutmal information, empirical wasserstein distance. We notice many of them can work for language modeling. 
+Except adversarial regularization, we also test other regularizers which could be used to match two distributions, e.g. MMD, empirical first n moment, neural mutmal information, empirical wasserstein distance. We notice many of them can work for language modeling. 
 
