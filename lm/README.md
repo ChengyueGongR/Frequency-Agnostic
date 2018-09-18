@@ -13,3 +13,8 @@ A large portion of this repo is borrowed from the following repos: https://githu
 + `python main.py --batch_size 20 --data data/penn --dropouti 0.4 --dropouth 0.25 --seed 141 --epoch 500 --save PTB.pt --log-file ptb.log`
 + `python finetune.py --batch_size 20 --data data/penn --dropouti 0.4 --dropouth 0.25 --seed 141 --epoch 500 --save PTB.pt --log-file finetune_ptb.log`
 + `python pointer.py --data data/penn --save PTB.pt --lambdasm 0.09 --theta 0.75 --window 700 --bptt 5000`
+
+## Further Work
+
+Except adversarial regularization, we also test other methods which can match two distribution, e.g. MMD, empirical first n moment, neural mutmal information, empirical wasserstein distance. We notice most of them can work for language modeling and text classification. 
+
