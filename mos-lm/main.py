@@ -246,10 +246,8 @@ def train():
                 kewness1 = torch.mean(torch.pow(rare - mean1, 3), 0) / torch.pow(var1, 1.5)
                 kurtosis0 = torch.mean(torch.pow(common - mean0, 4), 0) / torch.pow(var0, 2)
                 kurtosis1 = torch.mean(torch.pow(rare - mean1, 4), 0) / torch.pow(var1, 2)
-                reg_loss = torch.sqrt(torch.sum(torch.pow(mean0 - mean1, 2)))
-                           + torch.sqrt(torch.sum(torch.pow(var0 - var1, 2))) 
-                           + torch.sqrt(torch.sum(torch.pow(kewness0 - kewness1, 2)))
-                           + torch.sqrt(torch.sum(torch.pow(kurtosis0 - kurtosis1, 2)))
+                reg_loss = torch.sqrt(torch.sum(torch.pow(mean0 - mean1, 2))) + torch.sqrt(torch.sum(torch.pow(var0 - var1, 2))) \
+                + torch.sqrt(torch.sum(torch.pow(kewness0 - kewness1, 2))) + torch.sqrt(torch.sum(torch.pow(kurtosis0 - kurtosis1, 2)))
                 loss = raw_loss + args.moment_lambda * reg_loss
             elif args.adv:
                 # calculate the adv_classifier
