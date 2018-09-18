@@ -134,7 +134,7 @@ class SequenceGenerator(object):
         finished = [False for i in range(bsz)]
         worst_finalized = [{'idx': None, 'score': -math.inf} for i in range(bsz)]
         num_remaining_sent = bsz
-
+        
         # number of candidate hypos per step
         cand_size = 2 * beam_size  # 2 x beam size in case half are EOS
 
@@ -144,7 +144,6 @@ class SequenceGenerator(object):
 
         # helper function for allocating buffers on the fly
         buffers = {}
-
         def buffer(name, type_of=tokens):  # noqa
             if name not in buffers:
                 buffers[name] = type_of.new()
