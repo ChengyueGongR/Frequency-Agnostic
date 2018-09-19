@@ -8,4 +8,4 @@ This is the code we used in our NIPS 2018 paper
 ## Acknowledgements
 
 A large portion of this repo is borrowed from the following repos:
-https://github.com/salesforce/awd-lstm-lm, https://github.com/benkrause/dynamic-evaluation, https://github.com/zihangdai/mos, https://github.com/pytorch/fairseq and https://github.com/tensorflow/tensor2tensor.
+https://github.com/salesforce/awd-lstm-lm, https://github.com/zihangdai/mos, https://github.com/pytorch/fairseq and https://github.com/tensorflow/tensor2tensor.
