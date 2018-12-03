@@ -12,24 +12,6 @@ import model
 
 from utils import batchify, get_batch, repackage_hidden, message, set_log_file
 
-def mmd(x, y, alpha=1.0):
-    xx, yy, zz = torch.mm(x,x.t()), torch.mm(y,y.t()), torch.mm(x,y.t())
-    rx = (xx.diag().unsqueeze(0).expand_as(xx))
-    ry = (yy.diag().unsqueeze(0).expand_as(yy))
-    rz = torch.zeros_like(zz)
-    rz = (rz.t() + xx.diag()).t() + yy.diag()
-
-    K = torch.exp(- alpha * (rx.t() + rx - 2*xx))
-    L = torch.exp(- alpha * (ry.t() + ry - 2*yy))
-    P = torch.exp(- alpha * (rz - 2*zz))
-
-    B1 = x.size()[0]
-    beta = (1./(B1*(B1-1)))
-    B2 = y.size()[0]
-    eta = (1./(B2*(B2-1)))
-    gamma = (2./(B2*B1)) 
-    return beta * torch.sum(K)+ eta * torch.sum(L) - gamma * torch.sum(P)
-
 parser = argparse.ArgumentParser(description='PyTorch PennTreeBank RNN/LSTM Language Model')
 parser.add_argument('--data', type=str, default='data/penn/',
                     help='location of the data corpus')
@@ -92,13 +74,13 @@ parser.add_argument('--mmd_kernel_alpha', type=float,  default=0.5,
                     help='mmd kernel')
 parser.add_argument('--mmd_lambda', type=float,  default=0.1,
                     help='mmd kernel')
-parser.add_argument('--moment', action='store_false',
+parser.add_argument('--moment', action='store_true',
                     help='using moment regularization')
 parser.add_argument('--moment_split', type=int, default=8000,
                     help='threshold for rare and popular words')
 parser.add_argument('--moment_lambda', type=int, default=0.1,
                     help='lambda')
-parser.add_argument('--adv', action='store_true',
+parser.add_argument('--adv', action='store_false',
                     help='using adversarial regularization')
 parser.add_argument('--adv_bias', type=int, default=8000,
                     help='threshold for rare and popular words')
@@ -142,18 +124,19 @@ ntokens = len(corpus.dictionary)
 model = model.RNNModel(args.model, ntokens, args.emsize, args.nhid, args.nlayers, args.dropout, args.dropouth, args.dropouti, args.dropoute, args.wdrop, args.tied)
 if args.cuda:
     model.cuda()
+    model.encoder_sigma.cuda()
 total_params = sum(x.size()[0] * x.size()[1] if len(x.size()) > 1 else x.size()[0] for x in model.parameters())
 message('Args: ' + repr(args))
 message('Model total parameters: ' + repr(total_params))
 
 criterion = nn.CrossEntropyLoss()
-if args.adv:
-    rate = (ntokens - args.adv_bias) * 1.0 / ntokens
-    adv_criterion = nn.CrossEntropyLoss(weight=torch.Tensor([rate, 1 - rate]).cuda())
-    adv_hidden = nn.Linear(args.emsize, 2).cuda()
-    adv_targets = torch.LongTensor(np.array([0] * args.adv_bias + [1] * (ntokens - args.adv_bias))).cuda()
-    adv_targets = Variable(adv_targets)
-    adv_hidden.weight.data.uniform_(-0.1, 0.1)
+#if args.adv:
+#    rate = (ntokens - args.adv_bias) * 1.0 / ntokens
+#    adv_criterion = nn.CrossEntropyLoss(weight=torch.Tensor([rate, 1 - rate]).cuda())
+#    adv_hidden = nn.Linear(args.emsize, 2).cuda()
+#    adv_targets = torch.LongTensor(np.array([0] * args.adv_bias + [1] * (ntokens - args.adv_bias))).cuda()
+#    adv_targets = Variable(adv_targets)
+#    adv_hidden.weight.data.uniform_(-0.1, 0.1)
 ###############################################################################
 # Training code
 ###############################################################################
@@ -199,63 +182,63 @@ def train(flag):
         # If we didn't, the model would try backpropagating all the way to start of the dataset.
 
         if args.moment:
-            hidden = repackage_hidden(hidden)
-            optimizer.zero_grad()
+           hidden = repackage_hidden(hidden)
+           optimizer.zero_grad()
 
-            output, hidden, rnn_hs, dropped_rnn_hs, w = model(data, hidden, return_h=True)
-            raw_loss = criterion(output.view(-1, ntokens), targets)
+           output, hidden, rnn_hs, dropped_rnn_hs, w = model(data, hidden, return_h=True)
+           raw_loss = criterion(output.view(-1, ntokens), targets)
 
-            bias = args.moment_split
-            common = model.encoder.weight[:bias]
-            rare = model.encoder.weight[bias:]
-            mean0 = torch.mean(common, 0)
-            mean1 = torch.mean(rare, 0)
-            var0 = torch.var(common, 0)
-            var1 = torch.var(rare, 0)
-            kewness0 = torch.mean(torch.pow(common - mean0, 3), 0) / torch.pow(var0, 1.5)
-            kewness1 = torch.mean(torch.pow(rare - mean1, 3), 0) / torch.pow(var1, 1.5)
-            kurtosis0 = torch.mean(torch.pow(common - mean0, 4), 0) / torch.pow(var0, 2)
-            kurtosis1 = torch.mean(torch.pow(rare - mean1, 4), 0) / torch.pow(var1, 2)
-            reg_loss = torch.sqrt(torch.sum(torch.pow(mean0 - mean1, 2))) + torch.sqrt(torch.sum(torch.pow(var0 - var1, 2))) \
-                       + torch.sqrt(torch.sum(torch.pow(kewness0 - kewness1, 2))) + torch.sqrt(torch.sum(torch.pow(kurtosis0 - kurtosis1, 2)))
-            loss = raw_loss + args.moment_lambda * reg_loss
+           bias = args.moment_split
+           common = model.encoder.weight[:bias]
+           rare = model.encoder.weight[bias:]
+           mean0 = torch.mean(common, 0)
+           mean1 = torch.mean(rare, 0)
+           var0 = torch.var(common, 0)
+           var1 = torch.var(rare, 0)
+           kewness0 = torch.mean(torch.pow(common - mean0, 3), 0) / torch.pow(var0, 1.5)
+           kewness1 = torch.mean(torch.pow(rare - mean1, 3), 0) / torch.pow(var1, 1.5)
+           kurtosis0 = torch.mean(torch.pow(common - mean0, 4), 0) / torch.pow(var0, 2)
+           kurtosis1 = torch.mean(torch.pow(rare - mean1, 4), 0) / torch.pow(var1, 2)
+           reg_loss = torch.sqrt(torch.sum(torch.pow(mean0 - mean1, 2))) + torch.sqrt(torch.sum(torch.pow(var0 - var1, 2))) \
+                      + torch.sqrt(torch.sum(torch.pow(kewness0 - kewness1, 2))) + torch.sqrt(torch.sum(torch.pow(kurtosis0 - kurtosis1, 2)))
+           loss = raw_loss + args.moment_lambda * reg_loss
         elif args.adv:
-            # calculate the adv_classifier
-            optimizer.zero_grad()
-            adv_optimizer.zero_grad()
-            adv_h = adv_hidden(model.encoder.weight)
-            adv_loss = adv_criterion(adv_h, adv_targets)
-            adv_loss.backward()
-            adv_optimizer.step()
+           # calculate the adv_classifier
+           optimizer.zero_grad()
+           adv_optimizer.zero_grad()
+           adv_h = adv_hidden(model.encoder.weight)
+           adv_loss = adv_criterion(adv_h, adv_targets)
+           adv_loss.backward()
+           adv_optimizer.step()
 
-            hidden = repackage_hidden(hidden)
-            adv_optimizer.zero_grad()
-            optimizer.zero_grad()
-            output, hidden, rnn_hs, dropped_rnn_hs, w = model(data, hidden, return_h=True)
-            raw_loss = criterion(output.view(-1, ntokens), targets)
+           hidden = repackage_hidden(hidden)
+           adv_optimizer.zero_grad()
+           optimizer.zero_grad()
+           output, hidden, rnn_hs, dropped_rnn_hs, w = model(data, hidden, return_h=True)
+           raw_loss = criterion(output.view(-1, ntokens), targets)
 
-            adv_h = adv_hidden(model.encoder.weight)
-            adv_loss = adv_criterion(adv_h, adv_targets)
-            loss = raw_loss - args.adv_lambda * adv_loss
+           adv_h = adv_hidden(model.encoder.weight)
+           adv_loss = adv_criterion(adv_h, adv_targets)
+           loss = raw_loss - args.adv_lambda * adv_loss
         else:
-            hidden = repackage_hidden(hidden)
-            optimizer.zero_grad()
+        hidden = repackage_hidden(hidden)
+        optimizer.zero_grad()
 
-            output, hidden, rnn_hs, dropped_rnn_hs, w = model(data, hidden, return_h=True)
-            raw_loss = criterion(output.view(-1, ntokens), targets)
-
-            loss = raw_loss
-
+        output, hidden, rnn_hs, dropped_rnn_hs, w = model(data, hidden, return_h=True, is_switch=switch)
+        raw_loss = criterion(output.view(-1, ntokens), targets)
+        loss = raw_loss
         # Activiation Regularization
-        loss = loss + sum(args.alpha * dropped_rnn_h.pow(2).mean() for dropped_rnn_h in dropped_rnn_hs[-1:])
+        loss = loss + sum(args.alpha * dropped_rnn_h.pow(2).mean() for dropped_rnn_h in dropped_rnn_hs[-1:]) 
         # Temporal Activation Regularization (slowness)
         loss = loss + sum(args.beta * (rnn_h[1:] - rnn_h[:-1]).pow(2).mean() for rnn_h in rnn_hs[-1:])
+
         loss.backward()
 
         # `clip_grad_norm` helps prevent the exploding gradient problem in RNNs / LSTMs.
         torch.nn.utils.clip_grad_norm(model.parameters(), args.clip)
         optimizer.step()
-
+        #if switch:
+        #    aux_optimizer.step()
         total_loss += raw_loss.data
         optimizer.param_groups[0]['lr'] = lr2
         if batch % args.log_interval == 0 and batch > 0:
@@ -279,22 +262,22 @@ def train(flag):
 lr = args.lr
 best_val_loss = []
 stored_loss = 100000000
+switch=False
 
 # At any point you can hit Ctrl + C to break out of training early.
 try:
-    if args.adv:
-        adv_optimizer = torch.optim.SGD(adv_hidden.parameters(), lr=args.adv_lr, weight_decay=args.adv_wdecay)
-    optimizer = torch.optim.SGD(model.parameters(), lr=args.lr, weight_decay=args.wdecay)
+    #if args.adv:
+    #    adv_optimizer = torch.optim.SGD(adv_hidden.parameters(), lr=args.adv_lr, weight_decay=args.adv_wdecay)
+    optimizer = torch.optim.SGD(list(model.parameters()), lr=args.lr, weight_decay=args.wdecay)
     for epoch in range(1, args.epochs+1):
         epoch_start_time = time.time()
         train(epoch)
-        print(f'Save to {args.save}')
+        #print(f'Save to {args.save}')
         if 't0' in optimizer.param_groups[0]:
             tmp = {}
             for prm in model.parameters():
                 tmp[prm] = prm.data.clone()
                 prm.data = optimizer.state[prm]['ax'].clone()
-
             val_loss2 = evaluate(val_data)
             message('-' * 89)
             message('| end of epoch {:3d} | time: {:5.2f}s | valid loss {:5.2f} | '
@@ -335,10 +318,12 @@ try:
                 message('Saving Normal!')
                 stored_loss = val_loss
 
-            if 't0' not in optimizer.param_groups[0] and (len(best_val_loss)>args.nonmono and val_loss > min(best_val_loss[:-args.nonmono])):
+            if epoch >= 120:
+            # if 't0' not in optimizer.param_groups[0] and (len(best_val_loss)>args.nonmono and val_loss > min(best_val_loss[:-args.nonmono])):
                 message('Switching!')
                 optimizer = torch.optim.ASGD(model.parameters(), lr=args.lr, t0=0, lambd=0., weight_decay=args.wdecay)
-                #optimizer.param_groups[0]['lr'] /= 2.
+                #aux_optimizer = torch.optim.SGD(list(model.encoder[0].parameters())+list(model.encoder_sigma[0].parameters()), lr=args.lr,  weight_decay=args.wdecay)#model.encoder_sigma[0].parameters()
+                switch=True#optimizer.param_groups[0]['lr'] /= 2.
             best_val_loss.append(val_loss)
 
 except KeyboardInterrupt:

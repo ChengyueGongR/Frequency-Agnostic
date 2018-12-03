@@ -13,9 +13,12 @@ class RNNModel(nn.Module):
         super(RNNModel, self).__init__()
         self.lockdrop = LockedDropout()
         self.idrop = nn.Dropout(dropouti)
+        #self.drop_replace = nn.Dropout(0.65)
         self.hdrop = nn.Dropout(dropouth)
         self.drop = nn.Dropout(dropout)
         self.encoder = nn.Embedding(ntoken, ninp)
+        #self.encoder_sigma = []
+        self.encoder_sigma = nn.Embedding(ntoken, ninp)
         assert rnn_type in ['LSTM', 'QRNN', 'GRU'], 'RNN type is not supported'
         if rnn_type == 'LSTM':
             self.rnns = [torch.nn.LSTM(ninp if l == 0 else nhid, nhid if l != nlayers - 1 else (ninp if tie_weights else nhid), 1, dropout=0) for l in range(nlayers)]
@@ -33,7 +36,7 @@ class RNNModel(nn.Module):
         print(self.rnns)
         self.rnns = torch.nn.ModuleList(self.rnns)
         self.decoder = nn.Linear(nhid, ntoken)
-
+        
         # Optionally tie weights as in:
         # "Using the Output Embedding to Improve Language Models" (Press & Wolf 2016)
         # https://arxiv.org/abs/1608.05859
@@ -63,14 +66,23 @@ class RNNModel(nn.Module):
     def init_weights(self):
         initrange = 0.1
         self.encoder.weight.data.uniform_(-initrange, initrange)
+        self.encoder_sigma.weight.data.uniform_(-3, -1)
         self.decoder.bias.data.fill_(0)
         self.decoder.weight.data.uniform_(-initrange, initrange)
 
-    def forward(self, input, hidden, return_h=False):
-        emb = embedded_dropout(self.encoder, input, dropout=self.dropoute if self.training else 0)
-        #emb = self.idrop(emb)
+    def forward(self, input, hidden, return_h=False, is_switch=False):
+        emb, sigma = embedded_dropout(self.encoder, self.encoder_sigma, input, 
+                                      dropout=self.dropoute if self.training else 0, 
+                                      is_training=self.training, is_switch=is_switch)
+        m = torch.distributions.normal.Normal(torch.zeros_like(emb), torch.ones_like(emb) * 1)
+        noise = m.sample()
 
-        emb = self.lockdrop(emb, self.dropouti)
+        if self.training and not is_switch:
+           emb += sigma * noise
+        if is_switch:
+            emb = self.lockdrop(emb, self.dropouti)
+        else:
+            emb = self.lockdrop(emb, 0.0)
 
         raw_output = emb
         new_hidden = []
