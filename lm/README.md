@@ -1,3 +1,3 @@
-# Hyperspherical-Variational-Rrgularization
+# Version
 
 pytorch 0.4
