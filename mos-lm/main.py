@@ -88,13 +88,13 @@ parser.add_argument('--mmd_kernel_alpha', type=float,  default=0.5,
                     help='mmd kernel')
 parser.add_argument('--mmd_lambda', type=float,  default=0.1,
                     help='mmd kernel')
-parser.add_argument('--moment', action='store_true',
+parser.add_argument('--moment', action='store_false',
                     help='using moment regularization')
 parser.add_argument('--moment_split', type=int, default=7000,
                     help='threshold for rare and popular words')
 parser.add_argument('--moment_lambda', type=int, default=0.05,
                     help='lambda')
-parser.add_argument('--adv', action='store_false',
+parser.add_argument('--adv', action='store_true',
                     help='using adversarial regularization')
 parser.add_argument('--adv_bias', type=int, default=8000,
                     help='threshold for rare and popular words')
@@ -200,7 +200,7 @@ def evaluate(data_source, batch_size=10):
         hidden = repackage_hidden(hidden)
     return total_loss[0] / len(data_source)
 
-args.moment = True
+  
 def train():
     assert args.batch_size % args.small_batch_size == 0, 'batch_size must be divisible by small_batch_size'
 
