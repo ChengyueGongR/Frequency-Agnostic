@@ -88,13 +88,13 @@ parser.add_argument('--mmd_kernel_alpha', type=float,  default=0.5,
                     help='mmd kernel')
 parser.add_argument('--mmd_lambda', type=float,  default=0.1,
                     help='mmd kernel')
-parser.add_argument('--moment', action='store_false',
+parser.add_argument('--moment', action='store_true',
                     help='using moment regularization')
-parser.add_argument('--moment_split', type=int, default=8000,
+parser.add_argument('--moment_split', type=int, default=7000,
                     help='threshold for rare and popular words')
-parser.add_argument('--moment_lambda', type=int, default=0.1,
+parser.add_argument('--moment_lambda', type=int, default=0.05,
                     help='lambda')
-parser.add_argument('--adv', action='store_true',
+parser.add_argument('--adv', action='store_false',
                     help='using adversarial regularization')
 parser.add_argument('--adv_bias', type=int, default=8000,
                     help='threshold for rare and popular words')
@@ -200,7 +200,7 @@ def evaluate(data_source, batch_size=10):
         hidden = repackage_hidden(hidden)
     return total_loss[0] / len(data_source)
 
-
+args.moment = True
 def train():
     assert args.batch_size % args.small_batch_size == 0, 'batch_size must be divisible by small_batch_size'
 
@@ -232,7 +232,7 @@ def train():
             # If we didn't, the model would try backpropagating all the way to start of the dataset.
             hidden[s_id] = repackage_hidden(hidden[s_id])
 
-            log_prob, hidden[s_id], rnn_hs, dropped_rnn_hs = parallel_model(cur_data, hidden[s_id], return_h=True)
+            log_prob, hidden[s_id], rnn_hs, dropped_rnn_hs = parallel_model(cur_data, hidden[s_id], return_h=True, is_switch=is_switch)
             raw_loss = nn.functional.nll_loss(log_prob.view(-1, log_prob.size(2)), cur_targets)
             if args.moment:
                 bias = args.moment_split
@@ -249,20 +249,20 @@ def train():
                 reg_loss = torch.sqrt(torch.sum(torch.pow(mean0 - mean1, 2))) + torch.sqrt(torch.sum(torch.pow(var0 - var1, 2))) \
                 + torch.sqrt(torch.sum(torch.pow(kewness0 - kewness1, 2))) + torch.sqrt(torch.sum(torch.pow(kurtosis0 - kurtosis1, 2)))
                 loss = raw_loss + args.moment_lambda * reg_loss
-            elif args.adv:
-                # calculate the adv_classifier
-                optimizer.zero_grad()
-                adv_optimizer.zero_grad()
-                adv_h = adv_hidden(model.encoder.weight)
-                adv_loss = adv_criterion(adv_h, adv_targets)
-                adv_loss.backward()
-                adv_optimizer.step()
+            #elif args.adv:
+            #    # calculate the adv_classifier
+            #    optimizer.zero_grad()
+            #    adv_optimizer.zero_grad()
+            #    adv_h = adv_hidden(model.encoder.weight)
+            #    adv_loss = adv_criterion(adv_h, adv_targets)
+            #    adv_loss.backward()
+            #    adv_optimizer.step()
 
-                adv_optimizer.zero_grad()
-                optimizer.zero_grad()
-                adv_h = adv_hidden(model.encoder.weight)
-                adv_loss = adv_criterion(adv_h, adv_targets)
-                loss = raw_loss - args.adv_lambda * adv_loss
+            #    adv_optimizer.zero_grad()
+            #    optimizer.zero_grad()
+            #    adv_h = adv_hidden(model.encoder.weight)
+            #    adv_loss = adv_criterion(adv_h, adv_targets)
+            #    loss = raw_loss - args.adv_lambda * adv_loss
             else:
                 loss = raw_loss
             # loss = raw_loss
@@ -303,7 +303,7 @@ def train():
 lr = args.lr
 best_val_loss = []
 stored_loss = 100000000
-
+is_switch = False
 # At any point you can hit Ctrl + C to break out of training early.
 try:
     if args.continue_train:
@@ -356,6 +356,7 @@ try:
                 stored_loss = val_loss
 
             if 't0' not in optimizer.param_groups[0] and (len(best_val_loss)>args.nonmono and val_loss > min(best_val_loss[:-args.nonmono])):
+                is_switch = True
                 logging('Switching!')
                 optimizer = torch.optim.ASGD(model.parameters(), lr=args.lr, t0=0, lambd=0., weight_decay=args.wdecay)
                 #optimizer.param_groups[0]['lr'] /= 2.
