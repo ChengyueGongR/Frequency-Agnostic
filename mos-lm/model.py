@@ -64,7 +64,7 @@ class RNNModel(nn.Module):
         self.encoder.weight.data.uniform_(-initrange, initrange)
         self.decoder.bias.data.fill_(0)
         self.decoder.weight.data.uniform_(-initrange, initrange)
-        self.encoder_sigma.weight.data.uniform_(-5, -2)
+        self.encoder_sigma.weight.data.uniform_(-4, -1)
 
     def forward(self, input, hidden, return_h=False, return_prob=False, is_switch=False):
         batch_size = input.size(1)
