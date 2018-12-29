@@ -17,8 +17,7 @@ class RNNModel(nn.Module):
         self.hdrop = nn.Dropout(dropouth)
         self.drop = nn.Dropout(dropout)
         self.encoder = nn.Embedding(ntoken, ninp)
-        #self.encoder_sigma = []
-        self.encoder_sigma = nn.Embedding(ntoken, ninp)
+
         assert rnn_type in ['LSTM', 'QRNN', 'GRU'], 'RNN type is not supported'
         if rnn_type == 'LSTM':
             self.rnns = [torch.nn.LSTM(ninp if l == 0 else nhid, nhid if l != nlayers - 1 else (ninp if tie_weights else nhid), 1, dropout=0) for l in range(nlayers)]
@@ -59,6 +58,7 @@ class RNNModel(nn.Module):
         self.dropouth = dropouth
         self.dropoute = dropoute
         self.tie_weights = tie_weights
+        self.input_noise = 0.15
 
     def reset(self):
         if self.rnn_type == 'QRNN': [r.reset() for r in self.rnns]
@@ -71,18 +71,14 @@ class RNNModel(nn.Module):
         self.decoder.weight.data.uniform_(-initrange, initrange)
 
     def forward(self, input, hidden, return_h=False, is_switch=False):
-        emb, sigma = embedded_dropout(self.encoder, self.encoder_sigma, input, 
-                                      dropout=self.dropoute if self.training else 0, 
-                                      is_training=self.training, is_switch=is_switch)
-        m = torch.distributions.normal.Normal(torch.zeros_like(emb), torch.ones_like(emb) * 1)
-        noise = m.sample()
-
-        if self.training and not is_switch:
-           emb += sigma * noise
-        if is_switch:
-            emb = self.lockdrop(emb, self.dropouti)
-        else:
-            emb = self.lockdrop(emb, 0.0)
+        emb, sigma = embedded_dropout(self.encoder, torch.ones_like(self.encoder.weight), input,
+                                      dropout=self.dropoute if self.training else 0,
+                                      is_training=self.training)
+        if self.training:
+            m = torch.distributions.normal.Normal(torch.zeros_like(sigma), torch.ones_like(sigma) * 1)
+            sigma = m.sample() * self.input_noise
+            emb += sigma
+        emb = self.lockdrop(emb, self.dropouti)
 
         raw_output = emb
         new_hidden = []
