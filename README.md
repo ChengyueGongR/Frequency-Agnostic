@@ -9,7 +9,7 @@ The hyper-parameters are set for `pytorch 0.3` version, and there may be some ch
 
 Also, the performance will change when changing GPU.
 
-Therefore, the guide below can produce results similar to the numbers reported, but maybe not exact. If you have some difficulties at reproducing the final results, just ask the first author for help (e-mail: cygong@pku.edu.cn)
+Therefore, the guide below can produce results similar to the numbers reported, but maybe not exact. If you have some difficulties at reproducing the final results, feel free to ask the first author for help (e-mail: cygong@pku.edu.cn)
 
 ### Word level WikiText-2 (WT2) with AWD-LSTM
 Run the following commands:
