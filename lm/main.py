@@ -130,13 +130,13 @@ message('Args: ' + repr(args))
 message('Model total parameters: ' + repr(total_params))
 
 criterion = nn.CrossEntropyLoss()
-#if args.adv:
-#    rate = (ntokens - args.adv_bias) * 1.0 / ntokens
-#    adv_criterion = nn.CrossEntropyLoss(weight=torch.Tensor([rate, 1 - rate]).cuda())
-#    adv_hidden = nn.Linear(args.emsize, 2).cuda()
-#    adv_targets = torch.LongTensor(np.array([0] * args.adv_bias + [1] * (ntokens - args.adv_bias))).cuda()
-#    adv_targets = Variable(adv_targets)
-#    adv_hidden.weight.data.uniform_(-0.1, 0.1)
+if args.adv:
+   rate = (ntokens - args.adv_bias) * 1.0 / ntokens
+   adv_criterion = nn.CrossEntropyLoss(weight=torch.Tensor([rate, 1 - rate]).cuda())
+   adv_hidden = nn.Linear(args.emsize, 2).cuda()
+   adv_targets = torch.LongTensor(np.array([0] * args.adv_bias + [1] * (ntokens - args.adv_bias))).cuda()
+   adv_targets = Variable(adv_targets)
+   adv_hidden.weight.data.uniform_(-0.1, 0.1)
 ###############################################################################
 # Training code
 ###############################################################################
@@ -217,8 +217,8 @@ def train(flag):
            output, hidden, rnn_hs, dropped_rnn_hs, w = model(data, hidden, return_h=True)
            raw_loss = criterion(output.view(-1, ntokens), targets)
 
-           adv_h = adv_hidden(model.encoder.weight)
-           adv_loss = adv_criterion(adv_h, adv_targets)
+           adv_h = adv_hidden(model.encoder.weight[args.adv_bias:])
+           adv_loss = adv_criterion(adv_h, adv_targets[args.adv_bias:])
            loss = raw_loss - args.adv_lambda * adv_loss
         else:
            loss = raw_loss
