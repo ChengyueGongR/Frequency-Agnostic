@@ -189,7 +189,7 @@ def train(flag):
            raw_loss = criterion(output.view(-1, ntokens), targets)
 
            bias = args.moment_split
-           common = model.encoder.weight[:bias]
+           common = model.encoder.weight[:bias].detach()
            rare = model.encoder.weight[bias:]
            mean0 = torch.mean(common, 0)
            mean1 = torch.mean(rare, 0)
