@@ -78,7 +78,7 @@ parser.add_argument('--moment', action='store_false',
                     help='using moment regularization')
 parser.add_argument('--moment_split', type=int, default=8000,
                     help='threshold for rare and popular words')
-parser.add_argument('--moment_lambda', type=int, default=0.2,
+parser.add_argument('--moment_lambda', type=int, default=0.1,
                     help='lambda')
 parser.add_argument('--adv', action='store_true',
                     help='using adversarial regularization')
