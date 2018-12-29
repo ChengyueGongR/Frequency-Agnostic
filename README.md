@@ -5,11 +5,11 @@ This is the code we used in our NIPS 2018 paper
 >Chengyue Gong, Di He, Xu Tan, Tao Qin, Liwei Wang, Tie-yan Liu
 
 ## Experiments
-The hyper-parameters are set for `pytorch 0.3` version, and there may be some changes for `pytorch 0.4` version. (Also, the post-process should be changed for `pytorch 0.4`)
+The hyper-parameters are set for `pytorch 0.3` version, and there may be some changes for `pytorch 0.4` version. 
 
-We have also seen exact reproduction numbers change when changing underlying GPU.
+Also, the performance will change when changing GPU.
 
-Therefore, the guide below produces results similar to the numbers reported. If you have some difficulties at reproducing the final results, just ask the first author for help (e-mail: cygong@pku.edu.cn)
+Therefore, the guide below can produce results similar to the numbers reported, but maybe not exact. If you have some difficulties at reproducing the final results, just ask the first author for help (e-mail: cygong@pku.edu.cn)
 
 ### Word level WikiText-2 (WT2) with AWD-LSTM
 Run the following commands:
