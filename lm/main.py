@@ -72,13 +72,13 @@ parser.add_argument('--log-file', type=str,  default='',
                     help='path to save the log')
 parser.add_argument('--mmd_kernel_alpha', type=float,  default=0.5,
                     help='mmd kernel')
-parser.add_argument('--mmd_lambda', type=float,  default=0.1,
+parser.add_argument('--mmd_lambda', type=float,  default=0.2,
                     help='mmd kernel')
 parser.add_argument('--moment', action='store_false',
                     help='using moment regularization')
 parser.add_argument('--moment_split', type=int, default=8000,
                     help='threshold for rare and popular words')
-parser.add_argument('--moment_lambda', type=int, default=0.1,
+parser.add_argument('--moment_lambda', type=int, default=0.2,
                     help='lambda')
 parser.add_argument('--adv', action='store_true',
                     help='using adversarial regularization')
