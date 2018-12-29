@@ -20,8 +20,7 @@ Therefore, the guide below produces results similar to the numbers reported. If 
 Run the following commands:
 
 + `python main.py --epochs 1000 --data data/wikitext-2 --save WT2.pt --dropouth 0.2 --dropouti 0.55 --nonmono 15 --seed 1882`
-or
-+ `python main.py --epochs 1000 --data data/wikitext-2 --save WT2.pt --dropouth 0.2 --dropouti 0.55 --nonmono 15 --seed 1882 --moment --adv --adv_split 8000 --adv_lambda 0.02`
+or `python main.py --epochs 1000 --data data/wikitext-2 --save WT2.pt --dropouth 0.2 --dropouti 0.55 --nonmono 15 --seed 1882 --moment --adv --adv_split 8000 --adv_lambda 0.02`
 + `python finetune.py --epochs 1000 --data data/wikitext-2 --save WT2.pt --dropouth 0.2 --dropouti 0.55 --seed 1882`
 + `python pointer.py --save WT2.pt --lambdasm 0.16 --theta 1.4 --window 4200 --bptt 2000 --data data/wikitext-2`
 
