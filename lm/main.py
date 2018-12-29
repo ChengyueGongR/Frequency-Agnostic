@@ -221,6 +221,7 @@ def train(flag):
            adv_loss = adv_criterion(adv_h, adv_targets)
            loss = raw_loss - args.adv_lambda * adv_loss
         else:
+           loss = raw_loss
         hidden = repackage_hidden(hidden)
         optimizer.zero_grad()
 
