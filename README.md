@@ -26,6 +26,10 @@ Run the following commands:
 + `python finetune.py --batch_size 20 --data data/penn --dropouti 0.3 --dropouth 0.25 --seed 141 --epoch 800 --save PTB.pt`
 + `python pointer.py --data data/penn --save PTB.pt --lambdasm 0.09 --theta 0.75 --window 700 --bptt 5000`
 
+### Word level Penn Treebank (PTB) with AWD-LSTM-MoS
+For the `pytroch 0.4.0`code, detailed information can be found in https://github.com/ChengyueGongR/Frequency-Agnostic/pull/1.
+We can now achieve 55.75/53.91 after finetuning (it's 55.51/53.31 in our paper).
+
 ## Acknowledgements
 
 A large portion of this repo is borrowed from the following repos:
