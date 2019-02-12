@@ -90,9 +90,9 @@ parser.add_argument('--mmd_lambda', type=float,  default=0.1,
                     help='mmd kernel')
 parser.add_argument('--moment', action='store_false',
                     help='using moment regularization')
-parser.add_argument('--moment_split', type=int, default=7000,
+parser.add_argument('--moment_split', type=int, default=1500,
                     help='threshold for rare and popular words')
-parser.add_argument('--moment_lambda', type=int, default=0.05,
+parser.add_argument('--moment_lambda', type=int, default=0.01,
                     help='lambda')
 parser.add_argument('--adv', action='store_true',
                     help='using adversarial regularization')
@@ -133,7 +133,13 @@ if torch.cuda.is_available():
         print("WARNING: You have a CUDA device, so you should probably run with --cuda")
     else:
         torch.cuda.manual_seed_all(args.seed)
-
+if args.adv:
+   rate = (ntokens - args.adv_bias) * 1.0 / ntokens
+   adv_criterion = nn.CrossEntropyLoss(weight=torch.Tensor([rate, 1 - rate]).cuda())
+   adv_hidden = nn.Linear(args.emsize, 2).cuda()
+   adv_targets = torch.LongTensor(np.array([0] * args.adv_bias + [1] * (ntokens - args.adv_bias))).cuda()
+   adv_targets = Variable(adv_targets)
+  adv_hidden.weight.data.uniform_(-0.1, 0.1)
 ###############################################################################
 # Load data
 ###############################################################################
@@ -236,7 +242,7 @@ def train():
             raw_loss = nn.functional.nll_loss(log_prob.view(-1, log_prob.size(2)), cur_targets)
             if args.moment:
                 bias = args.moment_split
-                common = model.encoder.weight[:bias]
+                common = model.encoder.weight[:bias].detach()
                 rare = model.encoder.weight[bias:]
                 mean0 = torch.mean(common, 0)
                 mean1 = torch.mean(rare, 0)
@@ -249,20 +255,20 @@ def train():
                 reg_loss = torch.sqrt(torch.sum(torch.pow(mean0 - mean1, 2))) + torch.sqrt(torch.sum(torch.pow(var0 - var1, 2))) \
                 + torch.sqrt(torch.sum(torch.pow(kewness0 - kewness1, 2))) + torch.sqrt(torch.sum(torch.pow(kurtosis0 - kurtosis1, 2)))
                 loss = raw_loss + args.moment_lambda * reg_loss
-            #elif args.adv:
-            #    # calculate the adv_classifier
-            #    optimizer.zero_grad()
-            #    adv_optimizer.zero_grad()
-            #    adv_h = adv_hidden(model.encoder.weight)
-            #    adv_loss = adv_criterion(adv_h, adv_targets)
-            #    adv_loss.backward()
-            #    adv_optimizer.step()
+            elif args.adv:
+               # calculate the adv_classifier
+               optimizer.zero_grad()
+               adv_optimizer.zero_grad()
+               adv_h = adv_hidden(model.encoder.weight)
+               adv_loss = adv_criterion(adv_h, adv_targets)
+               adv_loss.backward()
+               adv_optimizer.step()
 
-            #    adv_optimizer.zero_grad()
-            #    optimizer.zero_grad()
-            #    adv_h = adv_hidden(model.encoder.weight)
-            #    adv_loss = adv_criterion(adv_h, adv_targets)
-            #    loss = raw_loss - args.adv_lambda * adv_loss
+               adv_optimizer.zero_grad()
+               optimizer.zero_grad()
+               adv_h = adv_hidden(model.encoder.weight)
+               adv_loss = adv_criterion(adv_h, adv_targets)
+               loss = raw_loss - args.adv_lambda * adv_loss
             else:
                 loss = raw_loss
             # loss = raw_loss
