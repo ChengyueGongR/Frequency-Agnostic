@@ -4,14 +4,14 @@ import torch
 from torch.autograd import Variable
 
 
-def embedded_dropout(embed, sigma, words, dropout=0.1, scale=None, is_training=False, is_switch=False):
+def embedded_dropout(embed, sigma, words, dropout=0.1, scale=None, is_training=False):
   if dropout:
     mask = embed.weight.data.new().resize_((embed.weight.size(0), 1)).bernoulli_(1 - dropout).expand_as(embed.weight) / (1 - dropout)
     masked_embed_weight = mask * embed.weight
-    masked_sigma_weight = mask * torch.exp(sigma.weight)
+    masked_sigma_weight = mask * sigma#torch.exp(sigma.weight) #* (torch.abs(torch.detach(embed.weight)) + 0.5) #torch.exp(sigma.weight)
   else:
     masked_embed_weight = embed.weight
-    masked_sigma_weight = torch.exp(sigma.weight)
+    masked_sigma_weight = sigma#torch.exp(sigma.weight)
   if scale:
     masked_embed_weight = scale.expand_as(masked_embed_weight) * masked_embed_weight
     masked_sigma_weight = scale.expand_as(masked_sigma_weight) * masked_sigma_weight
