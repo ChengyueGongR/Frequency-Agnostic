@@ -17,7 +17,8 @@ class RNNModel(nn.Module):
         super(RNNModel, self).__init__()
         self.lockdrop = LockedDropout()
         self.encoder = nn.Embedding(ntoken, ninp)
-        self.encoder_sigma = nn.Embedding(ntoken, ninp) 
+        self.input_noise = 0.15
+#         self.encoder_sigma = nn.Embedding(ntoken, ninp) 
         self.rnns = [torch.nn.LSTM(ninp if l == 0 else nhid, nhid if l != nlayers - 1 else nhidlast, 1, dropout=0) for l in range(nlayers)]
         if wdrop:
             self.rnns = [WeightDrop(rnn, ['weight_hh_l0'], dropout=wdrop) for rnn in self.rnns]
@@ -64,23 +65,18 @@ class RNNModel(nn.Module):
         self.encoder.weight.data.uniform_(-initrange, initrange)
         self.decoder.bias.data.fill_(0)
         self.decoder.weight.data.uniform_(-initrange, initrange)
-        self.encoder_sigma.weight.data.uniform_(-4, -1)
+#         self.encoder_sigma.weight.data.uniform_(-4, -1)
 
     def forward(self, input, hidden, return_h=False, return_prob=False, is_switch=False):
         batch_size = input.size(1)
-
-        emb, sigma = embedded_dropout(self.encoder, self.encoder_sigma, input, dropout=self.dropoute if self.training else 0, is_training=self.training, is_switch=is_switch)
-        m = torch.distributions.normal.Normal(torch.zeros_like(emb), torch.ones_like(emb) * 1)
-        noise = m.sample()
-        if self.training and not is_switch:
-            emb = emb + noise * sigma#(sigma + emb)
-        if is_switch:
-            emb = self.lockdrop(emb, 0.4)
-        else:
-            emb = self.lockdrop(emb, self.dropouti)
-        #emb = embedded_dropout(self.encoder, input, dropout=self.dropoute if self.training else 0)
-        ##emb = self.idrop(emb)
-        #emb = self.lockdrop(emb, self.dropouti)
+        emb, sigma = embedded_dropout(self.encoder, torch.ones_like(self.encoder.weight), input,
+                                      dropout=self.dropoute if self.training else 0,
+                                      is_training=self.training)
+        if self.training:
+            m = torch.distributions.normal.Normal(torch.zeros_like(sigma), torch.ones_like(sigma) * 1)
+            sigma = m.sample() * self.input_noise
+            emb += sigma
+        emb = self.lockdrop(emb, self.dropouti)
 
         raw_output = emb
         new_hidden = []
