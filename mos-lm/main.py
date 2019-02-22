@@ -348,14 +348,7 @@ try:
 
             for prm in model.parameters():
                 prm.data = tmp[prm].clone()
-            if (not finetune and epoch == 1100) or (not finetune and (len(best_val_loss)>args.nonmono and val_loss2 > min(best_val_loss[:-args.nonmono]))):
-                finetune = True
-                args.lr = 25.0
-                logging('Switching!')
-                optimizer = torch.optim.ASGD(model.parameters(), lr=args.lr, t0=0, lambd=0., weight_decay=args.wdecay)
-             
             best_val_loss.append(val_loss2)
-
         else:
             val_loss = evaluate(val_data, eval_batch_size)
             logging('-' * 89)
