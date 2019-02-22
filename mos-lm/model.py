@@ -43,7 +43,6 @@ class RNNModel(nn.Module):
 
         self.init_weights()
 
-        self.epsilon = epsilon
         self.gaussian = gaussian
         self.rnn_type = rnn_type
         self.ninp = ninp
