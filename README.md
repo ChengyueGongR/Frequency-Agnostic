@@ -27,7 +27,7 @@ Run the following commands:
 + `python pointer.py --data data/penn --save PTB.pt --lambdasm 0.09 --theta 0.75 --window 700 --bptt 5000`
 
 ### Word level Penn Treebank (PTB) with AWD-LSTM-MoS
-For the `pytroch 0.4.0`code, detailed information can be found in https://github.com/ChengyueGongR/Frequency-Agnostic/pull/1.
+For the `pytroch 0.4.0`code, detailed information can be found in https://github.com/ChengyueGongR/Frequency-Agnostic/issues/2.
 We can now achieve 55.75/53.91 after finetuning (it's 55.51/53.31 in our paper).
 
 ## Acknowledgements
