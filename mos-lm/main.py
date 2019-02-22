@@ -96,7 +96,7 @@ parser.add_argument('--moment_lambda', type=float, default=0.01,
                     help='lambda')
 parser.add_argument('--adv', action='store_true',
                     help='using adversarial regularization')
-parser.add_argument('--adv_bias', type=int, default=8000,
+parser.add_argument('--adv_bias', type=int, default=1500,
                     help='threshold for rare and popular words')
 parser.add_argument('--adv_lambda', type=float, default=0.01,
                     help='lambda')
@@ -104,6 +104,13 @@ parser.add_argument('--adv_lr', type=float,  default=0.02,
                     help='adv learning rate')
 parser.add_argument('--adv_wdecay', type=float,  default=1.2e-6,
                     help='adv weight decay')
+
+parser.add_argument('--switch', type=int, default=200,
+                    help='switch to asgd')
+parser.add_argument('--epsilon', type=float, default=0.005,
+                    help='switch to finetune')
+parser.add_argument('--gaussian', type=float, default=0.15,
+                    help='gaussian dropout')
 
 args = parser.parse_args()
 
@@ -133,13 +140,7 @@ if torch.cuda.is_available():
         print("WARNING: You have a CUDA device, so you should probably run with --cuda")
     else:
         torch.cuda.manual_seed_all(args.seed)
-if args.adv:
-   rate = (ntokens - args.adv_bias) * 1.0 / ntokens
-   adv_criterion = nn.CrossEntropyLoss(weight=torch.Tensor([rate, 1 - rate]).cuda())
-   adv_hidden = nn.Linear(args.emsize, 2).cuda()
-   adv_targets = torch.LongTensor(np.array([0] * args.adv_bias + [1] * (ntokens - args.adv_bias))).cuda()
-   adv_targets = Variable(adv_targets)
-  adv_hidden.weight.data.uniform_(-0.1, 0.1)
+
 ###############################################################################
 # Load data
 ###############################################################################
@@ -162,7 +163,7 @@ if args.continue_train:
 else:
     model = model.RNNModel(args.model, ntokens, args.emsize, args.nhid, args.nhidlast, args.nlayers, 
                        args.dropout, args.dropouth, args.dropouti, args.dropoute, args.wdrop, 
-                       args.tied, args.dropoutl, args.n_experts)
+                       args.tied, args.dropoutl, args.n_experts, args.epsilon, args.gaussian)
 
 if args.cuda:
     if args.single_gpu:
@@ -206,7 +207,8 @@ def evaluate(data_source, batch_size=10):
         hidden = repackage_hidden(hidden)
     return total_loss[0] / len(data_source)
 
-  
+args.adv = False
+#args.moment = False
 def train():
     assert args.batch_size % args.small_batch_size == 0, 'batch_size must be divisible by small_batch_size'
 
@@ -238,7 +240,7 @@ def train():
             # If we didn't, the model would try backpropagating all the way to start of the dataset.
             hidden[s_id] = repackage_hidden(hidden[s_id])
 
-            log_prob, hidden[s_id], rnn_hs, dropped_rnn_hs = parallel_model(cur_data, hidden[s_id], return_h=True, is_switch=is_switch)
+            log_prob, hidden[s_id], rnn_hs, dropped_rnn_hs = parallel_model(cur_data, hidden[s_id], return_h=True, targets=cur_targets, is_switch=is_switch)
             raw_loss = nn.functional.nll_loss(log_prob.view(-1, log_prob.size(2)), cur_targets)
             if args.moment:
                 bias = args.moment_split
@@ -256,19 +258,19 @@ def train():
                 + torch.sqrt(torch.sum(torch.pow(kewness0 - kewness1, 2))) + torch.sqrt(torch.sum(torch.pow(kurtosis0 - kurtosis1, 2)))
                 loss = raw_loss + args.moment_lambda * reg_loss
             elif args.adv:
-               # calculate the adv_classifier
-               optimizer.zero_grad()
-               adv_optimizer.zero_grad()
-               adv_h = adv_hidden(model.encoder.weight)
-               adv_loss = adv_criterion(adv_h, adv_targets)
-               adv_loss.backward()
-               adv_optimizer.step()
+                # calculate the adv_classifier
+                optimizer.zero_grad()
+                adv_optimizer.zero_grad()
+                adv_h = adv_hidden(model.encoder.weight)
+                adv_loss = adv_criterion(adv_h, adv_targets)
+                adv_loss.backward()
+                adv_optimizer.step()
 
-               adv_optimizer.zero_grad()
-               optimizer.zero_grad()
-               adv_h = adv_hidden(model.encoder.weight)
-               adv_loss = adv_criterion(adv_h, adv_targets)
-               loss = raw_loss - args.adv_lambda * adv_loss
+                adv_optimizer.zero_grad()
+                optimizer.zero_grad()
+                adv_h = adv_hidden(model.encoder.weight)
+                adv_loss = adv_criterion(adv_h, adv_targets)
+                loss = raw_loss - args.adv_lambda * adv_loss
             else:
                 loss = raw_loss
             # loss = raw_loss
@@ -310,6 +312,7 @@ lr = args.lr
 best_val_loss = []
 stored_loss = 100000000
 is_switch = False
+finetune = False
 # At any point you can hit Ctrl + C to break out of training early.
 try:
     if args.continue_train:
@@ -320,8 +323,6 @@ try:
             optimizer = torch.optim.SGD(model.parameters(), lr=args.lr, weight_decay=args.wdecay)
         optimizer.load_state_dict(optimizer_state)
     else:
-        if args.adv:
-            adv_optimizer = torch.optim.SGD(adv_hidden.parameters(), lr=args.adv_lr, weight_decay=args.adv_wdecay)
         optimizer = torch.optim.SGD(model.parameters(), lr=args.lr, weight_decay=args.wdecay)
 
     for epoch in range(1, args.epochs+1):
@@ -347,6 +348,13 @@ try:
 
             for prm in model.parameters():
                 prm.data = tmp[prm].clone()
+            if (not finetune and epoch == 1100) or (not finetune and (len(best_val_loss)>args.nonmono and val_loss2 > min(best_val_loss[:-args.nonmono]))):
+                finetune = True
+                args.lr = 25.0
+                logging('Switching!')
+                optimizer = torch.optim.ASGD(model.parameters(), lr=args.lr, t0=0, lambd=0., weight_decay=args.wdecay)
+             
+            best_val_loss.append(val_loss2)
 
         else:
             val_loss = evaluate(val_data, eval_batch_size)
@@ -361,7 +369,8 @@ try:
                 logging('Saving Normal!')
                 stored_loss = val_loss
 
-            if epoch >= 120:#if 't0' not in optimizer.param_groups[0] and (len(best_val_loss)>args.nonmono and val_loss > min(best_val_loss[:-args.nonmono])):
+            if epoch >= args.switch:
+            #if 't0' not in optimizer.param_groups[0] and (len(best_val_loss)>args.nonmono and val_loss > min(best_val_loss[:-args.nonmono])):
                 is_switch = True
                 logging('Switching!')
                 optimizer = torch.optim.ASGD(model.parameters(), lr=args.lr, t0=0, lambd=0., weight_decay=args.wdecay)

@@ -1,14 +1,15 @@
 import numpy as np
-import torch.nn.functional as F
+
 import torch
 from torch.autograd import Variable
 
-
-def embedded_dropout(embed, sigma, words, dropout=0.1, scale=None, is_training=False):
+def embedded_dropout(embed, sigma, words, dropout=0.1, scale=None, is_training=False, is_switch=False):
+  #m = torch.distributions.normal.Normal(torch.zeros_like(sigma.weight), torch.ones_like(sigma.weight) * 1)
+  #sigma = m.sample()
   if dropout:
     mask = embed.weight.data.new().resize_((embed.weight.size(0), 1)).bernoulli_(1 - dropout).expand_as(embed.weight) / (1 - dropout)
     masked_embed_weight = mask * embed.weight
-    masked_sigma_weight = mask * sigma#torch.exp(sigma.weight) #* (torch.abs(torch.detach(embed.weight)) + 0.5) #torch.exp(sigma.weight)
+    masked_sigma_weight = mask * sigma#torch.exp(sigma.weight)
   else:
     masked_embed_weight = embed.weight
     masked_sigma_weight = sigma#torch.exp(sigma.weight)
@@ -18,11 +19,8 @@ def embedded_dropout(embed, sigma, words, dropout=0.1, scale=None, is_training=F
   padding_idx = embed.padding_idx
   if padding_idx is None:
     padding_idx = -1
-  #m = torch.distributions.normal.Normal(torch.zeros_like(masked_sigma_weight), torch.ones_like(masked_sigma_weight) * 1)
-  #noise = m.sample()
-  #if is_training and not is_switch:
-  #  masked_embed_weight += masked_sigma_weight * noise
 
+#   X = embed._backend.Embedding.apply(words, masked_embed_weight
   X = torch.nn.functional.embedding(words, masked_embed_weight,
     padding_idx, embed.max_norm, embed.norm_type,
     embed.scale_grad_by_freq, embed.sparse
@@ -32,7 +30,6 @@ def embedded_dropout(embed, sigma, words, dropout=0.1, scale=None, is_training=F
   #  embed.scale_grad_by_freq, embed.sparse
   )
   return X, Y
-
 
 if __name__ == '__main__':
   V = 50

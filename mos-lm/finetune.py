@@ -76,6 +76,10 @@ parser.add_argument('--small_batch_size', type=int, default=-1,
 parser.add_argument('--max_seq_len_delta', type=int, default=40,
                     help='max sequence length')
 parser.add_argument('--single_gpu', default=False, action='store_true', help='use single GPU')
+
+parser.add_argument('--gaussian', type=float, default=0.15,
+                     help='gaussian dropout')
+
 args = parser.parse_args()
 
 print('finetune load path: {}/model.pt. '.format(args.save))
@@ -128,6 +132,7 @@ if args.continue_train:
     model = torch.load(os.path.join(args.save, 'finetune_model.pt'))
 else:
     model = torch.load(os.path.join(args.save, 'model.pt'))
+    model.gaussian = args.gaussian
 if args.cuda:
     if args.single_gpu:
         parallel_model = model.cuda()
@@ -193,7 +198,7 @@ def train():
             # If we didn't, the model would try backpropagating all the way to start of the dataset.
             hidden[s_id] = repackage_hidden(hidden[s_id])
 
-            log_prob, hidden[s_id], rnn_hs, dropped_rnn_hs = parallel_model(cur_data, hidden[s_id], return_h=True)
+            log_prob, hidden[s_id], rnn_hs, dropped_rnn_hs = parallel_model(cur_data, hidden[s_id], return_h=True, targets=cur_targets)
             raw_loss = nn.functional.nll_loss(log_prob.view(-1, log_prob.size(2)), cur_targets)
 
             loss = raw_loss

@@ -3,7 +3,7 @@ import torch
 import torch.nn as nn
 import torch.nn.functional as F
 from torch.autograd import Variable
-
+import numpy as np
 from embed_regularize import embedded_dropout
 from locked_dropout import LockedDropout
 from weight_drop import WeightDrop
@@ -13,15 +13,17 @@ class RNNModel(nn.Module):
 
     def __init__(self, rnn_type, ntoken, ninp, nhid, nhidlast, nlayers, 
                  dropout=0.5, dropouth=0.5, dropouti=0.5, dropoute=0.1, wdrop=0, 
-                 tie_weights=False, ldropout=0.5, n_experts=10):
+                 tie_weights=False, ldropout=0.5, n_experts=10, epsilon=0.005, gaussian=0.2):
         super(RNNModel, self).__init__()
+        # for dynamic evaluation
+        self.use_dropout = True
+
         self.lockdrop = LockedDropout()
         self.encoder = nn.Embedding(ntoken, ninp)
-        self.input_noise = 0.15
-#         self.encoder_sigma = nn.Embedding(ntoken, ninp) 
+        #self.encoder_sigma = nn.Embedding(ntoken, ninp) 
         self.rnns = [torch.nn.LSTM(ninp if l == 0 else nhid, nhid if l != nlayers - 1 else nhidlast, 1, dropout=0) for l in range(nlayers)]
         if wdrop:
-            self.rnns = [WeightDrop(rnn, ['weight_hh_l0'], dropout=wdrop) for rnn in self.rnns]
+            self.rnns = [WeightDrop(rnn, ['weight_hh_l0'], dropout=wdrop if self.use_dropout else 0) for rnn in self.rnns]
         self.rnns = torch.nn.ModuleList(self.rnns)
 
         self.prior = nn.Linear(nhidlast, n_experts, bias=False)
@@ -41,6 +43,8 @@ class RNNModel(nn.Module):
 
         self.init_weights()
 
+        self.epsilon = epsilon
+        self.gaussian = gaussian
         self.rnn_type = rnn_type
         self.ninp = ninp
         self.nhid = nhid
@@ -65,18 +69,23 @@ class RNNModel(nn.Module):
         self.encoder.weight.data.uniform_(-initrange, initrange)
         self.decoder.bias.data.fill_(0)
         self.decoder.weight.data.uniform_(-initrange, initrange)
-#         self.encoder_sigma.weight.data.uniform_(-4, -1)
+        #self.encoder_sigma.weight.data.uniform_(-5, -3)
 
-    def forward(self, input, hidden, return_h=False, return_prob=False, is_switch=False):
+    def forward(self, input, hidden, return_h=False, return_prob=False, targets=None, is_switch=False):
         batch_size = input.size(1)
-        emb, sigma = embedded_dropout(self.encoder, torch.ones_like(self.encoder.weight), input,
-                                      dropout=self.dropoute if self.training else 0,
-                                      is_training=self.training)
-        if self.training:
-            m = torch.distributions.normal.Normal(torch.zeros_like(sigma), torch.ones_like(sigma) * 1)
-            sigma = m.sample() * self.input_noise
-            emb += sigma
-        emb = self.lockdrop(emb, self.dropouti)
+
+        emb, sigma = embedded_dropout(self.encoder, torch.ones_like(self.encoder.weight), input, dropout=self.dropoute if (self.training and self.use_dropout) else 0, is_training=self.training)
+        
+        #m = torch.distributions.normal.Normal(torch.zeros_like(emb), torch.ones_like(emb) * 1)
+        #noise = m.sample()
+        if self.training and self.use_dropout:
+            m = torch.distributions.Normal(torch.zeros_like(sigma), torch.ones_like(sigma) * 1)
+            sigma = sigma * m.sample() * self.gaussian
+            emb = emb + sigma
+        emb = self.lockdrop(emb, self.dropouti if self.use_dropout else 0)
+        #emb = embedded_dropout(self.encoder, input, dropout=self.dropoute if self.training else 0)
+        ##emb = self.idrop(emb)
+        #emb = self.lockdrop(emb, self.dropouti)
 
         raw_output = emb
         new_hidden = []
@@ -90,21 +99,23 @@ class RNNModel(nn.Module):
             raw_outputs.append(raw_output)
             if l != self.nlayers - 1:
                 #self.hdrop(raw_output)
-                raw_output = self.lockdrop(raw_output, self.dropouth)
+                raw_output = self.lockdrop(raw_output, self.dropouth if self.use_dropout else 0)
                 outputs.append(raw_output)
         hidden = new_hidden
 
-        output = self.lockdrop(raw_output, self.dropout)
+        output = self.lockdrop(raw_output, self.dropout if self.use_dropout else 0)
         outputs.append(output)
 
         latent = self.latent(output)
-        latent = self.lockdrop(latent, self.dropoutl)
+        latent = self.lockdrop(latent, self.dropoutl if self.use_dropout else 0)
         logit = self.decoder(latent.view(-1, self.ninp))
 
         prior_logit = self.prior(output).contiguous().view(-1, self.n_experts)
         prior = nn.functional.softmax(prior_logit)
 
+
         prob = nn.functional.softmax(logit.view(-1, self.ntoken)).view(-1, self.n_experts, self.ntoken)
+        
         prob = (prob * prior.unsqueeze(2).expand_as(prob)).sum(1)
 
         if return_prob:
