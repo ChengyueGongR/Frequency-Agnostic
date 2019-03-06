@@ -107,7 +107,7 @@ class RNNModel(nn.Module):
 
         latent = self.latent(output)
         latent = self.lockdrop(latent, self.dropoutl if self.use_dropout else 0)
-        if self.training:
+        if self.training and self.use_dropout:
             logit = torch.mm(latent.view(-1, self.ninp), self.decoder.weight.t()) + self.decoder.bias
             latent = latent.view(-1, self.ninp)
             targets = targets.view([-1, 1]).expand([-1, 15]).contiguous().view(-1)
