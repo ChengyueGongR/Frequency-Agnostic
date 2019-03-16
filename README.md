@@ -28,7 +28,7 @@ Run the following commands:
 
 ### Word level Penn Treebank (PTB) with AWD-LSTM-MoS
 For the `pytroch 0.4.0`code, detailed information can be found in https://github.com/ChengyueGongR/Frequency-Agnostic/issues/2.
-We can now achieve 56.00/53.83 after finetuning (it's 55.51/53.31 in our paper). 
+We can now achieve 56.00/53.82 after finetuning (it's 55.51/53.31 in our paper). 
 You can download the pretrained model and the code here: https://drive.google.com/open?id=1znF6vrwNOXzWFS5KuIPVKGEEKoK5Fs57 .
 
 ## Acknowledgements
