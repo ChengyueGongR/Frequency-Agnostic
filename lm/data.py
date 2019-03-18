@@ -28,9 +28,6 @@ class Dictionary(object):
 class Corpus(object):
     def __init__(self, path):
         self.dictionary = Dictionary()
-        self.tokenize(os.path.join(path, 'train.txt'))
-        self.tokenize(os.path.join(path, 'valid.txt'))
-        self.tokenize(os.path.join(path, 'test.txt'))
         import pickle
         try:
             with open('dictionary_ptb', 'rb') as file:
@@ -49,6 +46,10 @@ class Corpus(object):
             import pickle
             with open('dictionary_ptb', 'wb') as file:
                 self.dictionary = pickle.load(file)
+        #print(self.dictionary.word2idx)
+        self.train = self.tokenize_(os.path.join(path, 'train.txt'))
+        self.valid = self.tokenize_(os.path.join(path, 'valid.txt'))
+        self.test = self.tokenize_(os.path.join(path, 'test.txt'))
 
     def tokenize(self, path):
         """Tokenizes a text file."""
@@ -62,7 +63,7 @@ class Corpus(object):
                 for word in words:
                     self.dictionary.add_word(word)
         return
-        
+
     def tokenize_(self, path):
         """Tokenizes a text file."""
         assert os.path.exists(path)
