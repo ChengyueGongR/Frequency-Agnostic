@@ -31,20 +31,24 @@ class Corpus(object):
         self.tokenize(os.path.join(path, 'train.txt'))
         self.tokenize(os.path.join(path, 'valid.txt'))
         self.tokenize(os.path.join(path, 'test.txt'))
-        new_dict = [(self.dictionary.counter[i], i) for i in self.dictionary.word2idx]
-        new_dict.sort(key=lambda x: x[0])
-        new_dict.reverse()
-        for i in range(len(new_dict)):
-            self.dictionary.word2idx[new_dict[i][1]] = i
-            self.dictionary.idx2word[i] = new_dict[i][1] 
-            self.dictionary.counter[i] = new_dict[i][0]
         import pickle
-        with open('dictionary_wt2', 'wb') as file:
-            pickle.dump(self.dictionary.idx2word, file)
-        print(len(self.dictionary.idx2word))
-        self.train = self.tokenize_(os.path.join(path, 'train.txt'))
-        self.valid = self.tokenize_(os.path.join(path, 'valid.txt'))
-        self.test = self.tokenize_(os.path.join(path, 'test.txt'))
+        try:
+            with open('dictionary_ptb', 'rb') as file:
+                self.dictionary = pickle.load(file)
+        except:
+            self.tokenize(os.path.join(path, 'train.txt'))
+            self.tokenize(os.path.join(path, 'valid.txt'))
+            self.tokenize(os.path.join(path, 'test.txt'))
+            new_dict = [(self.dictionary.counter[i], i) for i in self.dictionary.word2idx]
+            new_dict.sort(key=lambda x: x[0])
+            new_dict.reverse()
+            for i in range(len(new_dict)):
+                self.dictionary.word2idx[new_dict[i][1]] = i
+                self.dictionary.idx2word[i] = new_dict[i][1]
+                self.dictionary.counter[i] = new_dict[i][0]
+            import pickle
+            with open('dictionary_ptb', 'wb') as file:
+                self.dictionary = pickle.load(file)
 
     def tokenize(self, path):
         """Tokenizes a text file."""
