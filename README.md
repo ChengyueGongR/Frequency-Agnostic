@@ -15,8 +15,8 @@ Therefore, the guide below can produce results similar to the numbers reported, 
 Run the following commands:
 
 + `python3 -u main.py --epochs 4000 --nonmono 5 --data data/wikitext-2 --dropouti 0.5 --dropouth 0.2 --seed 1882 --save ./trained_model/wiki2.pt --moment_split 8000 --moment_lambda 0.02`
-or `python main.py --epochs 4000  --nonmono 5 --data data/wikitext-2 --save WT2.pt --dropouth 0.2 --dropouti 0.5 --seed 1882 --adv_split 8000 --adv_lambda 0.02`
-+ `python pointer.py --save WT2.pt --lambdasm 0.16 --theta 1.4 --window 4200 --bptt 2000 --data data/wikitext-2`
+or `python3 main.py --epochs 4000  --nonmono 5 --data data/wikitext-2 --save WT2.pt --dropouth 0.2 --dropouti 0.5 --seed 1882 --adv_split 8000 --adv_lambda 0.02`
++ `python3 pointer.py --save WT2.pt --lambdasm 0.16 --theta 1.4 --window 4200 --bptt 2000 --data data/wikitext-2`
 
 ### Word level Penn Treebank (PTB) with AWD-LSTM
 You can download the pretrained model and the code here: https://drive.google.com/open?id=1x0GL8oYv21lwHkAkyWWgL7ViBRjxFAnc, the PPL after finetune is `57.7`/`55.8` (valid / test).
