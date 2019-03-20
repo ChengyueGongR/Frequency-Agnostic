@@ -28,14 +28,12 @@ class Dictionary(object):
 class Corpus(object):
     def __init__(self, path):
         self.dictionary = Dictionary()
-        self.tokenize(os.path.join(path, 'train.txt'))
-        self.tokenize(os.path.join(path, 'valid.txt'))
-        self.tokenize(os.path.join(path, 'test.txt'))
         import pickle
-        try:
-            with open('dictionary_ptb', 'rb') as file:
+        name = path.split('/')[1]
+        if os.path.exists('dictionary_' + name):
+            with open('dictionary_' + name, 'rb') as file:
                 self.dictionary = pickle.load(file)
-        except:
+        else:
             self.tokenize(os.path.join(path, 'train.txt'))
             self.tokenize(os.path.join(path, 'valid.txt'))
             self.tokenize(os.path.join(path, 'test.txt'))
@@ -44,11 +42,14 @@ class Corpus(object):
             new_dict.reverse()
             for i in range(len(new_dict)):
                 self.dictionary.word2idx[new_dict[i][1]] = i
-                self.dictionary.idx2word[i] = new_dict[i][1]
+                self.dictionary.idx2word[i] = new_dict[i][1] 
                 self.dictionary.counter[i] = new_dict[i][0]
-            import pickle
-            with open('dictionary_ptb', 'wb') as file:
-                self.dictionary = pickle.load(file)
+            with open('dictionary_' + name, 'wb') as file:
+                pickle.dump(self.dictionary, file)
+        #print(self.dictionary.word2idx)
+        self.train = self.tokenize_(os.path.join(path, 'train.txt'))
+        self.valid = self.tokenize_(os.path.join(path, 'valid.txt'))
+        self.test = self.tokenize_(os.path.join(path, 'test.txt'))
 
     def tokenize(self, path):
         """Tokenizes a text file."""
