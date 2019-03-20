@@ -5,26 +5,26 @@ This is the code we used in our NIPS 2018 paper
 >Chengyue Gong, Di He, Xu Tan, Tao Qin, Liwei Wang, Tie-yan Liu
 
 ## Experiments
-The hyper-parameters are set for `pytorch 0.3` version, and there may be some changes for `pytorch 0.4` version. 
+The hyper-parameters are set for `pytorch 0.4` version. 
 
-Also, the performance will change when changing GPU.
+The performance will change when changing GPU.
 
 Therefore, the guide below can produce results similar to the numbers reported, but maybe not exact. If you have some difficulties at reproducing the final results, feel free to ask the first author for help (e-mail: cygong@pku.edu.cn)
 
 ### Word level WikiText-2 (WT2) with AWD-LSTM
 Run the following commands:
 
-+ `python main.py --epochs 1000 --data data/wikitext-2 --save WT2.pt --dropouth 0.2 --dropouti 0.55 --nonmono 15 --seed 1882`
-or `python main.py --epochs 1000 --data data/wikitext-2 --save WT2.pt --dropouth 0.2 --dropouti 0.55 --nonmono 15 --seed 1882 --moment --adv --adv_split 8000 --adv_lambda 0.02`
-+ `python finetune.py --epochs 1000 --data data/wikitext-2 --save WT2.pt --dropouth 0.2 --dropouti 0.55 --seed 1882`
++ `python3 -u main.py --epochs 4000 --nonmono 5 --data data/wikitext-2 --dropouti 0.5 --dropouth 0.2 --seed 1882 --save ./trained_model/wiki2.pt --moment_split 8000 --moment_lambda 0.02`
+or `python main.py --epochs 4000  --nonmono 5 --data data/wikitext-2 --save WT2.pt --dropouth 0.2 --dropouti 0.5 --seed 1882 --adv_split 8000 --adv_lambda 0.02`
 + `python pointer.py --save WT2.pt --lambdasm 0.16 --theta 1.4 --window 4200 --bptt 2000 --data data/wikitext-2`
 
 ### Word level Penn Treebank (PTB) with AWD-LSTM
+You can download the pretrained model and the code here: https://drive.google.com/open?id=1x0GL8oYv21lwHkAkyWWgL7ViBRjxFAnc, the PPL after finetune is `57.7`/`55.8` (valid / test).
+
 Run the following commands:
 
-+ `python main.py --batch_size 20 --data data/penn --dropouti 0.3 --dropouth 0.25 --seed 141 --nonmono 15 --epoch 800 --save PTB.pt --moment_split 1000 --moment_lambda 0.1`
-+ `python finetune.py --batch_size 20 --data data/penn --dropouti 0.3 --dropouth 0.25 --seed 141 --epoch 800 --save PTB.pt`
-+ `python pointer.py --data data/penn --save PTB.pt --lambdasm 0.09 --theta 0.75 --window 700 --bptt 5000`
++ `python3 main.py --nonmono 5 --batch_size 20 --data data/penn --dropouth 0.25 --dropouti 0.3 --dropout 0.4 --alpha 2 --beta 1 --seed 141 --epoch 2000 --save ./trained_model/ptb.pt`
++ `python3 pointer.py --data data/penn --save PTB.pt --lambdasm 0.09 --theta 0.75 --window 700 --bptt 5000`
 
 ### Word level Penn Treebank (PTB) with AWD-LSTM-MoS
 For the `pytroch 0.4.0`code, detailed information can be found in https://github.com/ChengyueGongR/Frequency-Agnostic/issues/2.
