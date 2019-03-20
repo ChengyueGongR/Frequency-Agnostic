@@ -5,7 +5,7 @@ This is the code we used in our NIPS 2018 paper
 >Chengyue Gong, Di He, Xu Tan, Tao Qin, Liwei Wang, Tie-yan Liu
 
 ## Experiments
-The hyper-parameters are set for `pytorch 0.4` version. 
+The hyper-parameters are set for `pytorch 0.4` version. The result of our paper is based on `pytorch 0.2`, so some results are better (awd-lstm) while some results are worse (awd-lstm-mos).
 
 The performance will change when changing GPU.
 
