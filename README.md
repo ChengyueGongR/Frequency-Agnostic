@@ -35,3 +35,5 @@ You can download the pretrained model and the code here: https://drive.google.co
 
 A large portion of this repo is borrowed from the following repos:
 https://github.com/salesforce/awd-lstm-lm, https://github.com/zihangdai/mos, https://github.com/pytorch/fairseq and https://github.com/tensorflow/tensor2tensor.
+
+Thanks @simtony, @takase and other gays for their useful advices.
