@@ -132,7 +132,8 @@ if args.continue_train:
     model = torch.load(os.path.join(args.save, 'finetune_model.pt'))
 else:
     model = torch.load(os.path.join(args.save, 'model.pt'))
-    model.gaussian = args.gaussian
+model.gaussian = args.gaussian
+model.dropouth = args.dropouth;model.dropouti = args.dropouti
 if args.cuda:
     if args.single_gpu:
         parallel_model = model.cuda()
@@ -200,7 +201,21 @@ def train():
 
             log_prob, hidden[s_id], rnn_hs, dropped_rnn_hs = parallel_model(cur_data, hidden[s_id], return_h=True, targets=cur_targets)
             raw_loss = nn.functional.nll_loss(log_prob.view(-1, log_prob.size(2)), cur_targets)
-
+            if False:
+                bias = 4000#args.moment_split
+                common = model.encoder.weight[:bias]#.detach()
+                rare = model.encoder.weight[bias:]
+                mean0 = torch.mean(common, 0)
+                mean1 = torch.mean(rare, 0)
+                var0 = torch.var(common, 0)
+                var1 = torch.var(rare, 0)
+                kewness0 = torch.mean(torch.pow(common - mean0, 3), 0) / torch.pow(var0, 1.5)
+                kewness1 = torch.mean(torch.pow(rare - mean1, 3), 0) / torch.pow(var1, 1.5)
+                kurtosis0 = torch.mean(torch.pow(common - mean0, 4), 0) / torch.pow(var0, 2)
+                kurtosis1 = torch.mean(torch.pow(rare - mean1, 4), 0) / torch.pow(var1, 2)
+                reg_loss = torch.sqrt(torch.sum(torch.pow(mean0 - mean1, 2))) + torch.sqrt(torch.sum(torch.pow(var0 - var1, 2))) \
+                + torch.sqrt(torch.sum(torch.pow(kewness0 - kewness1, 2))) + torch.sqrt(torch.sum(torch.pow(kurtosis0 - kurtosis1, 2)))
+                loss = raw_loss + 0.05 * reg_loss #args.moment_lambda * reg_loss
             loss = raw_loss
             # Activiation Regularization
             loss = loss + sum(args.alpha * dropped_rnn_h.pow(2).mean() for dropped_rnn_h in dropped_rnn_hs[-1:])

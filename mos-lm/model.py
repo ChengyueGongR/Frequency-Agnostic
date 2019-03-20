@@ -79,7 +79,7 @@ class RNNModel(nn.Module):
         #noise = m.sample()
         if self.training and self.use_dropout:
             m = torch.distributions.Normal(torch.zeros_like(sigma), torch.ones_like(sigma) * 1)
-            sigma = sigma * m.sample() * self.gaussian
+            sigma = m.sample() * self.gaussian
             emb = emb + sigma
         emb = self.lockdrop(emb, self.dropouti if self.use_dropout else 0)
         #emb = embedded_dropout(self.encoder, input, dropout=self.dropoute if self.training else 0)
@@ -111,18 +111,16 @@ class RNNModel(nn.Module):
             logit = torch.mm(latent.view(-1, self.ninp), self.decoder.weight.t()) + self.decoder.bias
             latent = latent.view(-1, self.ninp)
             targets = targets.view([-1, 1]).expand([-1, 15]).contiguous().view(-1)
-            variance = 0.0075
+            variance = 0.0125
             noise_outputs = torch.distributions.normal.Normal(torch.zeros_like(self.decoder.weight), torch.ones_like(self.decoder.weight)).sample() * variance
-            noise_outputs = - self.decoder.weight / torch.abs(self.decoder.weight) * torch.abs(noise_outputs)
+            noise_outputs = - self.decoder.weight / torch.abs(self.decoder.weight + 1e-8) * torch.abs(noise_outputs)
             noise_outputs = (latent * noise_outputs[targets]).sum(1)
+
             logit[torch.arange(targets.size(0)).long().cuda(), targets] += noise_outputs
         else:
-            logit = self.decoder(latent.view(-1, self.ninp)) 
-
-
+            logit = self.decoder(latent.view(-1, self.ninp))       
         prior_logit = self.prior(output).contiguous().view(-1, self.n_experts)
         prior = nn.functional.softmax(prior_logit)
-
 
         prob = nn.functional.softmax(logit.view(-1, self.ntoken)).view(-1, self.n_experts, self.ntoken)
         

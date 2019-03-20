@@ -1,0 +1,3 @@
+#IDX=10
+#CUDA_VISIBLE_DEVICES=3 nohup python3 -u main.py --data data/penn --dropouti 0.25 --gaussian 0.2 --dropoutl 0.29 --dropouth 0.225 --seed 28 --batch_size 12 --lr 20.0 --epoch 1000 --nhid 960 --nhidlast 620 --emsize 280 --n_experts 15 --save PTB-20190309-054220  --continue_train --single_gpu  --switch 150 --adv --moment >>  ./tmp.log 2>&1 &
+CUDA_VISIBLE_DEVICES=2 nohup python3 -u finetune.py --data data/penn --dropoutl 0.29 --dropouti 0.25 --gaussian 0.2 --dropouth 0.225 --seed 28 --batch_size 12 --lr 25.0 --epoch 1000 --nhid 960 --emsize 280 --n_experts 15 --save try-ptb --single_gpu >>  ./tmp.log 2>&1 &

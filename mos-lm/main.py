@@ -90,17 +90,17 @@ parser.add_argument('--mmd_lambda', type=float,  default=0.1,
                     help='mmd kernel')
 parser.add_argument('--moment', action='store_true',
                     help='using moment regularization')
-parser.add_argument('--moment_split', type=int, default=1500,
+parser.add_argument('--moment_split', type=int, default=2000,
                     help='threshold for rare and popular words')
-parser.add_argument('--moment_lambda', type=float, default=0.1,
+parser.add_argument('--moment_lambda', type=float, default=0.01,
                     help='lambda')
 parser.add_argument('--adv', action='store_false',
                     help='using adversarial regularization')
-parser.add_argument('--adv_bias', type=int, default=1500,
+parser.add_argument('--adv_bias', type=int, default=1000,
                     help='threshold for rare and popular words')
-parser.add_argument('--adv_lambda', type=float, default=0.05,
+parser.add_argument('--adv_lambda', type=float, default=0.02,
                     help='lambda')
-parser.add_argument('--adv_lr', type=float,  default=0.02,
+parser.add_argument('--adv_lr', type=float,  default=0.01,
                     help='adv learning rate')
 parser.add_argument('--adv_wdecay', type=float,  default=1.2e-6,
                     help='adv weight decay')
@@ -109,7 +109,7 @@ parser.add_argument('--switch', type=int, default=200,
                     help='switch to asgd')
 parser.add_argument('--epsilon', type=float, default=0.005,
                     help='switch to finetune')
-parser.add_argument('--gaussian', type=float, default=0.15,
+parser.add_argument('--gaussian', type=float, default=0.0,
                     help='gaussian dropout')
 
 args = parser.parse_args()
@@ -160,6 +160,7 @@ test_data = batchify(corpus.test, test_batch_size, args)
 ntokens = len(corpus.dictionary)
 if args.continue_train:
     model = torch.load(os.path.join(args.save, 'model.pt'))
+    model.gaussian = args.gaussian;model.dropouti = args.dropouti
 else:
     model = model.RNNModel(args.model, ntokens, args.emsize, args.nhid, args.nhidlast, args.nlayers, 
                        args.dropout, args.dropouth, args.dropouti, args.dropoute, args.wdrop, 
@@ -244,7 +245,7 @@ def train():
             raw_loss = nn.functional.nll_loss(log_prob.view(-1, log_prob.size(2)), cur_targets)
             if args.moment:
                 bias = args.moment_split
-                common = model.encoder.weight[:bias].detach()
+                common = model.encoder.weight[:bias]#.detach()
                 rare = model.encoder.weight[bias:]
                 mean0 = torch.mean(common, 0)
                 mean1 = torch.mean(rare, 0)
