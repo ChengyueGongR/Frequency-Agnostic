@@ -4,10 +4,9 @@ import math
 import numpy as np
 import torch
 import torch.nn as nn
-import torch.nn.functional as F
+
 import data
 import model
-from torch.autograd import Variable
 
 from utils import batchify, get_batch, repackage_hidden
 
@@ -65,30 +64,6 @@ parser.add_argument('--optimizer', type=str,  default='sgd',
                     help='optimizer to use (sgd, adam)')
 parser.add_argument('--when', nargs="+", type=int, default=[-1],
                     help='When (which epochs) to divide the learning rate by 10 - accepts multiple')
-
-parser.add_argument('--log-file', type=str,  default='',
-                    help='path to save the log')
-parser.add_argument('--mmd_kernel_alpha', type=float,  default=0.5,
-                    help='mmd kernel')
-parser.add_argument('--mmd_lambda', type=float,  default=0.2,
-                    help='mmd kernel')
-parser.add_argument('--moment', action='store_true',
-                    help='using moment regularization')
-parser.add_argument('--moment_split', type=int, default=1000,
-                    help='threshold for rare and popular words')
-parser.add_argument('--moment_lambda', type=int, default=0.02,
-                    help='lambda')
-parser.add_argument('--adv', action='store_false',
-                    help='using adversarial regularization')
-parser.add_argument('--adv_bias', type=int, default=1000,
-                    help='threshold for rare and popular words')
-parser.add_argument('--adv_lambda', type=int, default=0.02,
-                    help='lambda')
-parser.add_argument('--adv_lr', type=float,  default=0.02,
-                    help='adv learning rate')
-parser.add_argument('--adv_wdecay', type=float,  default=1.2e-6,
-                    help='adv weight decay')
-
 args = parser.parse_args()
 args.tied = True
 
@@ -116,14 +91,14 @@ def model_load(fn):
 
 import os
 import hashlib
-#fn = 'corpus.{}.data'.format(hashlib.md5(args.data.encode()).hexdigest())
-#if os.path.exists(fn):
-#    print('Loading cached dataset...')
-#    corpus = torch.load(fn)
-#else:
-print('Producing dataset...')
-corpus = data.Corpus(args.data)
-#torch.save(corpus, fn)
+fn = 'corpus.{}.data'.format(hashlib.md5(args.data.encode()).hexdigest())
+if os.path.exists(fn):
+    print('Loading cached dataset...')
+    corpus = torch.load(fn)
+else:
+    print('Producing dataset...')
+    corpus = data.Corpus(args.data)
+    torch.save(corpus, fn)
 
 eval_batch_size = 10
 test_batch_size = 1
@@ -131,21 +106,13 @@ train_data = batchify(corpus.train, args.batch_size, args)
 val_data = batchify(corpus.valid, eval_batch_size, args)
 test_data = batchify(corpus.test, test_batch_size, args)
 
-
 ###############################################################################
 # Build the model
 ###############################################################################
 
 from splitcross import SplitCrossEntropyLoss
 criterion = None
-ntokens = len(corpus.dictionary)
-if args.adv:
-   rate = (ntokens - args.adv_bias) * 1.0 / ntokens
-   adv_criterion = nn.CrossEntropyLoss(weight=torch.Tensor([rate, 1 - rate]).cuda())
-   adv_hidden = nn.Linear(args.emsize, 2).cuda()
-   adv_targets = torch.LongTensor(np.array([0] * args.adv_bias + [1] * (ntokens - args.adv_bias))).cuda()
-   adv_targets = Variable(adv_targets)
-   adv_hidden.weight.data.uniform_(-0.1, 0.1)
+
 ntokens = len(corpus.dictionary)
 model = model.RNNModel(args.model, ntokens, args.emsize, args.nhid, args.nlayers, args.dropout, args.dropouth, args.dropouti, args.dropoute, args.wdrop, args.tied)
 ###
@@ -177,7 +144,6 @@ if args.cuda:
     model = model.cuda()
     criterion = criterion.cuda()
 ###
-
 params = list(model.parameters()) + list(criterion.parameters())
 total_params = sum(x.size()[0] * x.size()[1] if len(x.size()) > 1 else x.size()[0] for x in params if x.size())
 print('Args:', args)
@@ -197,15 +163,12 @@ def evaluate(data_source, batch_size=10):
     for i in range(0, data_source.size(0) - 1, args.bptt):
         data, targets = get_batch(data_source, i, args, evaluation=True)
         output, hidden = model(data, hidden)
-        total_loss += len(data) * criterion(model.decoder.weight, model.decoder.bias, output, targets)[0].data
+        total_loss += len(data) * criterion(model.decoder.weight, model.decoder.bias, output, targets).data
         hidden = repackage_hidden(hidden)
     return total_loss.item() / len(data_source)
 
 
-def train(epoch):
-    inner_product = 0
-    count = 0
-    save_hiddens = []
+def train():
     # Turn on training mode which enables dropout.
     if args.model == 'QRNN': model.reset()
     total_loss = 0
@@ -231,43 +194,13 @@ def train(epoch):
         optimizer.zero_grad()
 
         output, hidden, rnn_hs, dropped_rnn_hs = model(data, hidden, return_h=True)
-        raw_loss = criterion(model.decoder.weight, model.decoder.bias, output, targets, noise_weight=None, noise=False)
-        if args.moment:
-            bias = args.moment_split
-            common = model.encoder.weight[:bias]
-            rare = model.encoder.weight[bias:]
-            mean0 = torch.mean(common, 0)
-            mean1 = torch.mean(rare, 0)
-            var0 = torch.var(common, 0)
-            var1 = torch.var(rare, 0)
-            kewness0 = torch.mean(torch.pow(common - mean0, 3), 0) / torch.pow(var0, 1.5)
-            kewness1 = torch.mean(torch.pow(rare - mean1, 3), 0) / torch.pow(var1, 1.5)
-            kurtosis0 = torch.mean(torch.pow(common - mean0, 4), 0) / torch.pow(var0, 2)
-            kurtosis1 = torch.mean(torch.pow(rare - mean1, 4), 0) / torch.pow(var1, 2)
-            reg_loss = torch.sqrt(torch.sum(torch.pow(mean0 - mean1, 2))) + torch.sqrt(torch.sum(torch.pow(var0 - var1, 2))) \
-                      + torch.sqrt(torch.sum(torch.pow(kewness0 - kewness1, 2))) + torch.sqrt(torch.sum(torch.pow(kurtosis0 - kurtosis1, 2)))
-            loss = raw_loss + args.moment_lambda * reg_loss
-        elif args.adv:
-           # calculate the adv_classifier
-            optimizer.zero_grad()
-            adv_optimizer.zero_grad()
-            adv_h = adv_hidden(model.encoder.weight)
-            adv_loss = adv_criterion(adv_h, adv_targets)
-            adv_loss.backward()
-            adv_optimizer.step()
+        weight_noise = torch.distributions.normal.Normal(torch.zeros_like(model.decoder.weight), torch.ones_like(model.decoder.weight) * 1).sample() * 0.2
+        binary_mask = torch.distributions.bernoulli.Bernoulli(torch.ones(model.decoder.weight.size(0)) * 0.1).sample().cuda()
+        binary_mask[targets.view(-1)] = 1
+        weight_noise = binary_mask.view([-1, 1]) * weight_noise 
+        raw_loss = criterion(model.decoder.weight + weight_noise, model.decoder.bias, output, targets)
 
-            hidden = repackage_hidden(hidden)
-            adv_optimizer.zero_grad()
-            optimizer.zero_grad()
-            #output, hidden, rnn_hs, dropped_rnn_hs, w = model(data, hidden, return_h=True)
-            #raw_loss = criterion(output.view(-1, ntokens), targets)
-
-            adv_h = adv_hidden(model.encoder.weight[args.adv_bias:])
-            adv_loss = adv_criterion(adv_h, adv_targets[args.adv_bias:])
-            loss = raw_loss - args.adv_lambda * adv_loss
-        else:
-            loss = raw_loss
-        #loss = raw_loss
+        loss = raw_loss
         # Activiation Regularization
         if args.alpha: loss = loss + sum(args.alpha * dropped_rnn_h.pow(2).mean() for dropped_rnn_h in dropped_rnn_hs[-1:])
         # Temporal Activation Regularization (slowness)
@@ -292,23 +225,15 @@ def train(epoch):
         ###
         batch += 1
         i += seq_len
-        #if i >= 30 and i <= 150:
-            #import pickle
-            #with open('hiddens', 'wb') as f:
-            #    pickle.dump(save_hiddens, f)
-            #print('OK!!')
-    #print('inner_product', inner_product / count)
+
 # Loop over epochs.
 lr = args.lr
 best_val_loss = []
 stored_loss = 100000000
-finetune = False
+
 # At any point you can hit Ctrl + C to break out of training early.
 try:
     optimizer = None
-    if args.adv:
-        adv_optimizer = torch.optim.SGD(adv_hidden.parameters(), lr=args.adv_lr, weight_decay=args.adv_wdecay)
-    #optimizer = torch.optim.ASGD(model.parameters(), lr=args.lr, t0=0, lambd=0., weight_decay=args.wdecay)
     # Ensure the optimizer is optimizing params, which includes both the model's weights as well as the criterion's weight (i.e. Adaptive Softmax)
     if args.optimizer == 'sgd':
         optimizer = torch.optim.SGD(params, lr=args.lr, weight_decay=args.wdecay)
@@ -316,15 +241,13 @@ try:
         optimizer = torch.optim.Adam(params, lr=args.lr, weight_decay=args.wdecay)
     for epoch in range(1, args.epochs+1):
         epoch_start_time = time.time()
-        train(epoch)
+        train()
         if 't0' in optimizer.param_groups[0]:
             tmp = {}
             for prm in model.parameters():
                 tmp[prm] = prm.data.clone()
-                try:
-                    prm.data = optimizer.state[prm]['ax'].clone()
-                except:
-                    pass
+                prm.data = optimizer.state[prm]['ax'].clone()
+
             val_loss2 = evaluate(val_data)
             print('-' * 89)
             print('| end of epoch {:3d} | time: {:5.2f}s | valid loss {:5.2f} | '
@@ -332,7 +255,7 @@ try:
                     epoch, (time.time() - epoch_start_time), val_loss2, math.exp(val_loss2), val_loss2 / math.log(2)))
             print('-' * 89)
 
-            if epoch % 30 == 0:
+            if epoch % 10 == 0:
                 test_loss = evaluate(test_data, test_batch_size)
                 print('| end of epoch {:3d} | time: {:5.2f}s | test loss {:5.2f} | '
                       'test ppl {:8.2f} | test bpc {:8.3f}'.format(
@@ -346,17 +269,7 @@ try:
 
             for prm in model.parameters():
                 prm.data = tmp[prm].clone()
-            
-            #if epoch == 1800:
-            #    finetune = True
-            #    print('Switching!')
-            #    optimizer = torch.optim.ASGD(model.parameters(), lr=args.lr, t0=0, lambd=0., weight_decay=args.wdecay)
-            #if epoch == 1000:
-            if (not finetune and epoch == 1000) or (not finetune and (len(best_val_loss)>args.nonmono and val_loss2 > min(best_val_loss[:-args.nonmono]))):
-                finetune = True
-                print('Switching!')
-                optimizer = torch.optim.ASGD(model.parameters(), lr=args.lr, t0=0, lambd=0., weight_decay=args.wdecay)
-            best_val_loss.append(val_loss2)
+
         else:
             val_loss = evaluate(val_data, eval_batch_size)
             print('-' * 89)
@@ -370,15 +283,14 @@ try:
                 print('Saving model (new best validation)')
                 stored_loss = val_loss
 
-            if epoch % 30 == 0:
+            if epoch % 10 == 0:
                 test_loss = evaluate(test_data, test_batch_size)
                 print('| end of epoch {:3d} | time: {:5.2f}s | test loss {:5.2f} | '
                       'test ppl {:8.2f} | test bpc {:8.3f}'.format(
                    epoch, (time.time() - epoch_start_time), test_loss, math.exp(test_loss), test_loss / math.log(2)))
                 print('=' * 89)
 
-            if epoch >= 110:
-            #if args.optimizer == 'sgd' and 't0' not in optimizer.param_groups[0] and (len(best_val_loss)>args.nonmono and val_loss > min(best_val_loss[:-args.nonmono])):
+            if args.optimizer == 'sgd' and 't0' not in optimizer.param_groups[0] and (len(best_val_loss)>args.nonmono and val_loss > min(best_val_loss[:-args.nonmono])):
                 print('Switching to ASGD')
                 optimizer = torch.optim.ASGD(model.parameters(), lr=args.lr, t0=0, lambd=0., weight_decay=args.wdecay)
 

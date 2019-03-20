@@ -68,7 +68,7 @@ def evaluate(data_source, batch_size=10, window=args.window):
     for i in range(0, data_source.size(0) - 1, args.bptt):
         if i > 0: print(i, len(data_source), math.exp(total_loss / i))
         data, targets = get_batch(data_source, i, evaluation=True, args=args)
-        output, hidden, rnn_outs, _, _ = model(data, hidden, return_h=True)
+        output, hidden, rnn_outs, _ = model(data, hidden, return_h=True)
         rnn_out = rnn_outs[-1].squeeze()
         output_flat = output.view(-1, ntokens)
         ###
@@ -119,18 +119,13 @@ with open(args.save, 'rb') as f:
     else:
         model = torch.load(f)
 print(model)
-x = np.array(model.encoder.weight.data)
-import pickle
-with open('save_embedding_wt2_orig', 'wb') as file:
-    pickle.dump(x, file)
-print('save successfully')
 
 # Run on val data.
-#val_loss = evaluate(val_data, test_batch_size)
-#print('=' * 89)
-#print('| End of pointer | val loss {:5.2f} | val ppl {:8.2f}'.format(
-#    val_loss, math.exp(val_loss)))
-#print('=' * 89)
+val_loss = evaluate(val_data, test_batch_size)
+print('=' * 89)
+print('| End of pointer | val loss {:5.2f} | val ppl {:8.2f}'.format(
+    val_loss, math.exp(val_loss)))
+print('=' * 89)
 
 # Run on test data.
 test_loss = evaluate(test_data, test_batch_size)

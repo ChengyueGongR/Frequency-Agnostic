@@ -4,6 +4,11 @@ import torch
 from torch.autograd import Variable
 
 def embedded_dropout(embed, sigma, words, dropout=0.1, scale=None, is_training=False):
+  #sigma = torch.where(torch.exp(sigma.weight) > 0.3, torch.ones_like(sigma.weight) * 0.3, torch.exp(sigma.weight))
+  #m = torch.distributions.normal.Normal(torch.zeros_like(sigma), torch.ones_like(sigma) * 1)
+  #sigma = m.sample() * sigma
+  #binary_mask = torch.distributions.bernoulli.Bernoulli(torch.ones(embed.weight.size(0)) * 0.75).sample().cuda()
+  #sigma = sigma * binary_mask.view([-1, 1])
   if dropout:
     mask = embed.weight.data.new().resize_((embed.weight.size(0), 1)).bernoulli_(1 - dropout).expand_as(embed.weight) / (1 - dropout)
     masked_embed_weight = mask * embed.weight
