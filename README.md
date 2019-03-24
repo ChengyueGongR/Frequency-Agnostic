@@ -19,12 +19,11 @@ or `python3 main.py --epochs 4000  --nonmono 5 --data data/wikitext-2 --save WT2
 + `python3 pointer.py --save WT2.pt --lambdasm 0.16 --theta 1.4 --window 4200 --bptt 2000 --data data/wikitext-2`
 
 ### Word level Penn Treebank (PTB) with AWD-LSTM
-You can download the pretrained model and the code here: https://drive.google.com/open?id=1x0GL8oYv21lwHkAkyWWgL7ViBRjxFAnc, the PPL after finetune is `57.7`/`55.8` (valid / test).
-
+You can download the pretrained model and the code here: https://drive.google.com/open?id=1x0GL8oYv21lwHkAkyWWgL7ViBRjxFAnc, the PPL after finetune is `57.7`/`55.8` (valid / test). 
 Run the following commands:
 
 + `python3 main.py --nonmono 5 --batch_size 20 --data data/penn --dropouth 0.25 --dropouti 0.3 --dropout 0.4 --alpha 2 --beta 1 --seed 141 --epoch 2000 --save ./trained_model/ptb.pt`
-+ `python3 pointer.py --data data/penn --save PTB.pt --lambdasm 0.09 --theta 0.75 --window 700 --bptt 5000`
++ `python3 pointer.py --data data/penn --save PTB.pt --lambdasm 0.1 --theta 1.0 --window 500 --bptt 5000`
 
 ### Word level Penn Treebank (PTB) with AWD-LSTM-MoS
 For the `pytroch 0.4.0`code, detailed information can be found in https://github.com/ChengyueGongR/Frequency-Agnostic/issues/2.
@@ -36,4 +35,4 @@ You can download the pretrained model and the code here: https://drive.google.co
 A large portion of this repo is borrowed from the following repos:
 https://github.com/salesforce/awd-lstm-lm, https://github.com/zihangdai/mos, https://github.com/pytorch/fairseq and https://github.com/tensorflow/tensor2tensor.
 
-Thanks [simtony](https://github.com/simtony), [takase](https://github.com/takase) and other gays for their useful advices.
+Thanks [simtony](https://github.com/simtony), [takase](https://github.com/takase), [keli](https://github.com/keli78) and other gays for their useful advices.
