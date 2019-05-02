@@ -19,7 +19,7 @@ or `python3 main.py --epochs 4000  --nonmono 5 --data data/wikitext-2 --save WT2
 + `python3 pointer.py --save WT2.pt --lambdasm 0.16 --theta 1.4 --window 4200 --bptt 2000 --data data/wikitext-2`
 
 ### Word level Penn Treebank (PTB) with AWD-LSTM
-You can download the pretrained model and the code here: (pretrained_model)[https://drive.google.com/open?id=1x0GL8oYv21lwHkAkyWWgL7ViBRjxFAnc].
+You can download the pretrained model and the code here: [pretrained_model](https://drive.google.com/open?id=1x0GL8oYv21lwHkAkyWWgL7ViBRjxFAnc).
 
 The PPL after finetune is `57.7`/`55.8` (valid / test). The PPL after post-process is `52.1`/`51.6` (valid / test).
 
@@ -30,15 +30,15 @@ Run the following commands:
 
 ### Word level Penn Treebank (PTB) with AWD-LSTM-MoS
 
-**Warning** The dynamic evaluation contains some bugs for `pytorch 0.4` (if you use original MoS with `pytorch 0.4`, you will also meet with this problem). Now, we suggest you to add some patchs and run it in early version, e.g. `pytorch 0.2`. Please check (issue)[https://github.com/ChengyueGongR/Frequency-Agnostic/issues/2] to know how to fix it. 
+**Warning** The dynamic evaluation contains some bugs for `pytorch 0.4` (if you use original MoS with `pytorch 0.4`, you will also meet with this problem). Now, we suggest you to add some patchs and run it in early version, e.g. `pytorch 0.2`. Please check [issue](https://github.com/ChengyueGongR/Frequency-Agnostic/issues/2) to know how to fix it. 
 
 For the `pytroch 0.4.0` code, detailed information can be found in https://github.com/ChengyueGongR/Frequency-Agnostic/issues/2.
 
 We can now achieve 56.00/53.82 after finetuning (it's 55.51/53.31 in our paper). 
 
-You can download the pretrained model and the code here: (pretrained_model)[https://drive.google.com/open?id=1znF6vrwNOXzWFS5KuIPVKGEEKoK5Fs57]. The path for the final model is `./pretrained_ptb/finetune_model.pt`. (`pytorch 0.4`)
+You can download the pretrained model and the code here: [pretrained_model](https://drive.google.com/open?id=1znF6vrwNOXzWFS5KuIPVKGEEKoK5Fs57). The path for the final model is `./pretrained_ptb/finetune_model.pt`. (`pytorch 0.4`)
 
-You can download the pretrained model for `pytorch 0.2` here: (pretrained_model)[https://drive.google.com/open?id=1k9kVyPvCf1orDKKyQn3rokrr2I4gYBRW]
+You can download the pretrained model for `pytorch 0.2` here: [pretrained_model](https://drive.google.com/open?id=1k9kVyPvCf1orDKKyQn3rokrr2I4gYBRW)
 
 ## Acknowledgements
 
