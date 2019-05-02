@@ -42,6 +42,13 @@ You can download the pretrained model and the code here: [pretrained_model](http
 
 You can download the pretrained model for `pytorch 0.2` here: [pretrained_model](https://drive.google.com/open?id=1k9kVyPvCf1orDKKyQn3rokrr2I4gYBRW)
 
+Run the following commands:
+
++ `python3 -u main.py --data data/penn --dropoutl 0.29 --dropouth 0.225 --dropouti 0.25 --gaussian 0.15 --dropouth 0.225 --seed 28 --batch_size 12 --lr 20.0 --epoch 600 --nhid 960 --nhidlast 620 --emsize 280 --n_experts 15 --save PTB --single_gpu --moment --adv --switch 160`
++ `python3 -u finetune.py --data data/penn --dropoutl 0.29 --dropouti 0.25 --gaussian 0.15 --dropouth 0.225 --seed 28 --batch_size 12 --lr 25.0 --epoch 1000 --nhid 960 --emsize 280 --n_experts 15 --save PATH_TO_FOLDER --single_gpu`
++ `cp PATH_TO_FOLDER/finetune_model.pt PATH_TO_FOLDER/model.pt` and run `python3 -u finetune.py --data data/penn --dropoutl 0.29 --dropouti 0.25 --gaussian 0.15 --dropouth 0.225 --seed 28 --batch_size 12 --lr 25.0 --epoch 1000 --nhid 960 --emsize 280 --n_experts 15 --save PATH_TO_FOLDER --single_gpu` (twice)
+
+
 ## Acknowledgements
 
 A large portion of this repo is borrowed from the following repos:
