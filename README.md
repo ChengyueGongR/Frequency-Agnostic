@@ -45,4 +45,4 @@ You can download the pretrained model for `pytorch 0.2` here: [pretrained_model]
 A large portion of this repo is borrowed from the following repos:
 https://github.com/salesforce/awd-lstm-lm, https://github.com/zihangdai/mos, https://github.com/pytorch/fairseq and https://github.com/tensorflow/tensor2tensor.
 
-Thanks [simtony](https://github.com/simtony), [takase](https://github.com/takase), [keli](https://github.com/keli78) and other gays for their useful advices.
+Thanks [simtony](https://github.com/simtony), [takase](https://github.com/takase) and [keli](https://github.com/keli78) for their useful advices.
